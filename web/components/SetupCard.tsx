@@ -65,13 +65,17 @@ export default function SetupCard({
           </CardTitle>
           <Badge
             variant="outline"
-            className={`text-[11px] font-mono transition-colors ${
+            className={`text-[11px] font-mono transition-colors flex items-center ${
               scoreVal >= 50
                 ? "border-amber-500/50 text-amber-400 bg-amber-500/10"
                 : "border-zinc-700 text-zinc-400 bg-zinc-800/40"
             }`}
           >
-            Live Score: {scoreVal} / 100
+            <span className="relative flex h-1.5 w-1.5 mr-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+            </span>
+            <span>Live Score: {typeof scoreVal === "number" ? scoreVal.toFixed(1) : scoreVal} / 100</span>
           </Badge>
         </CardHeader>
         <CardContent className="space-y-3.5 pt-1">
@@ -84,8 +88,8 @@ export default function SetupCard({
                 Needs 60 to trade
               </span>
             </div>
-            <span className="text-xs text-zinc-400 font-mono">
-              ${price.toLocaleString()}
+            <span className="text-xs text-zinc-300 font-mono font-medium">
+              ${price > 0 ? price.toFixed(2) : "0.00"}
             </span>
           </div>
 
@@ -93,7 +97,9 @@ export default function SetupCard({
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] text-zinc-400">
               <span className="font-medium">Market Confluence</span>
-              <span className="font-mono text-zinc-300">{scoreVal}%</span>
+              <span className="font-mono text-zinc-300">
+                {typeof scoreVal === "number" ? scoreVal.toFixed(1) : scoreVal}%
+              </span>
             </div>
             <div className="w-full bg-zinc-800/90 h-2 rounded-full overflow-hidden relative">
               <div

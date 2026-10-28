@@ -295,9 +295,9 @@ def calc_ambient_confluence(
         + w["regime"] * regime_fit
         + w["rr"] * rr_comp
     )
-    score = int(round(raw_score))
+    score = round(raw_score, 1)
     # Cap between 5 and 58 so ambient readiness never triggers >= 60 without a candle breakout
-    score = min(max(score, 5), 58)
+    score = min(max(score, 5.0), 58.0)
 
     reasons: List[Dict[str, Any]] = []
     align_pts = int(round(100.0 * w["align"] * align))

@@ -25,7 +25,7 @@ export function useLive({ symbol, tf, initialSnapshot = null }: UseLiveOptions) 
       if (active) setConnected(true);
     };
 
-    es.addEventListener("snapshot", (event) => {
+    const handleData = (event: MessageEvent) => {
       if (!active) return;
       try {
         const data = JSON.parse(event.data);
@@ -35,7 +35,10 @@ export function useLive({ symbol, tf, initialSnapshot = null }: UseLiveOptions) 
       } catch (err) {
         console.error("Failed to parse SSE snapshot:", err);
       }
-    });
+    };
+
+    es.addEventListener("snapshot", handleData);
+    es.onmessage = handleData;
 
     es.onerror = () => {
       if (active) setConnected(false);
