@@ -147,3 +147,31 @@ def set_setting(key: str, value: str, db_path: Optional[str] = None) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+def check_daily_limit_hit(balance: float, daily_limit_pct: float, db_path: Optional[str] = None) -> bool:
+    """
+    Checks if today's realized loss in journal exceeds balance * daily_limit_pct / 100.
+    """
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    start_of_day = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_ms = int(start_of_day.timestamp() * 1000)
+
+    conn = get_connection(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT SUM(pnl_usd) as total_pnl FROM journal WHERE closed_at >= ?",
+            (start_ms,),
+        )
+        row = cursor.fetchone()
+        if row and row["total_pnl"] is not None:
+            total_pnl = float(row["total_pnl"])
+            max_loss = balance * (daily_limit_pct / 100.0)
+            if total_pnl < 0 and abs(total_pnl) >= max_loss:
+                return True
+        return False
+    finally:
+        conn.close()
+

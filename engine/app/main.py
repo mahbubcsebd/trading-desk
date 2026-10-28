@@ -185,7 +185,19 @@ async def get_backtest_endpoint(
         return results
     finally:
         conn.close()
-
+@app.get("/api/signals", dependencies=[Depends(verify_engine_key)])
+async def get_signals_endpoint(
+    symbol: Optional[str] = Query(None, description="Optional symbol, e.g. BTCUSDT, XAUUSDT"),
+    limit: int = Query(50, ge=1, le=200, description="Max signals to return"),
+) -> Dict[str, Any]:
+    from app.signals import get_signals_log
+    sym = symbol.upper() if symbol else None
+    if sym and sym not in config.SYMBOLS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid symbol '{symbol}'. Supported symbols: {config.SYMBOLS}",
+        )
+    return get_signals_log(symbol=sym, limit=limit)
 
 
 @app.get("/api/stream", dependencies=[Depends(verify_engine_key)])

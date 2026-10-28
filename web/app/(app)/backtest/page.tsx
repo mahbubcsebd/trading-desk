@@ -9,11 +9,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getBacktest, type BacktestResult } from "@/lib/engine";
+import { getBacktest, getSignals, type BacktestResult } from "@/lib/engine";
 
 async function BacktestData() {
   let btcResults: BacktestResult[] = [];
   let xauResults: BacktestResult[] = [];
+  let signalsData: Awaited<ReturnType<typeof getSignals>> = {
+    signals: [],
+    stats: { count: 0, winRate: 0, avgR: 0, expectancy: 0 },
+  };
 
   try {
     btcResults = await getBacktest("BTCUSDT");
@@ -25,6 +29,15 @@ async function BacktestData() {
     xauResults = await getBacktest("XAUUSDT");
   } catch {
     xauResults = [];
+  }
+
+  try {
+    signalsData = await getSignals(undefined, 50);
+  } catch {
+    signalsData = {
+      signals: [],
+      stats: { count: 0, winRate: 0, avgR: 0, expectancy: 0 },
+    };
   }
 
   const renderTable = (symbolName: string, symbolCode: string, results: BacktestResult[]) => {
@@ -153,15 +166,28 @@ async function BacktestData() {
         </p>
       </div>
 
-      {/* Live Signal Results Table (P6 integration target) */}
+      {/* Live Signal Results Table */}
       <Card className="border-zinc-800 bg-zinc-900/40">
-        <CardHeader className="pb-3 border-b border-zinc-800/80">
-          <CardTitle className="text-sm font-semibold text-zinc-200">
-            Live Signal Forward-Test Log
-          </CardTitle>
-          <CardDescription className="text-xs text-zinc-400">
-            Real-time trade signals recorded live, incorporating the full liquidity confirmation layer.
-          </CardDescription>
+        <CardHeader className="pb-3 border-b border-zinc-800/80 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-semibold text-zinc-200">
+              Live Signal Forward-Test Log
+            </CardTitle>
+            <CardDescription className="text-xs text-zinc-400">
+              Real-time trade signals recorded live, incorporating the full liquidity confirmation layer.
+            </CardDescription>
+          </div>
+          {signalsData.stats.count > 0 && (
+            <div className="flex items-center space-x-2 text-[11px] font-mono">
+              <span className="text-zinc-400">Trades: <strong className="text-zinc-200">{signalsData.stats.count}</strong></span>
+              <span className="text-zinc-600">•</span>
+              <span className="text-zinc-400">Win Rate: <strong className="text-zinc-200">{signalsData.stats.winRate}%</strong></span>
+              <span className="text-zinc-600">•</span>
+              <span className="text-zinc-400">Avg R: <strong className="text-zinc-200">{signalsData.stats.avgR}R</strong></span>
+              <span className="text-zinc-600">•</span>
+              <span className="text-zinc-400">Expectancy: <strong className="text-zinc-200">{signalsData.stats.expectancy}R</strong></span>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -179,11 +205,62 @@ async function BacktestData() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow className="border-zinc-800/80">
-                <TableCell colSpan={9} className="text-center py-6 text-xs text-zinc-500">
-                  Live signal outcomes will be logged here automatically as closed candles evaluate setups.
-                </TableCell>
-              </TableRow>
+              {signalsData.signals.length === 0 ? (
+                <TableRow className="border-zinc-800/80">
+                  <TableCell colSpan={9} className="text-center py-6 text-xs text-zinc-500">
+                    Live signal outcomes will be logged here automatically as closed candles evaluate setups.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                signalsData.signals.map((sig) => (
+                  <TableRow key={sig.id} className="border-zinc-800/40 hover:bg-zinc-800/30">
+                    <TableCell className="font-semibold text-zinc-200 text-xs">
+                      {sig.symbol}
+                    </TableCell>
+                    <TableCell className="text-xs uppercase text-zinc-300 font-medium">
+                      {sig.strategy}
+                    </TableCell>
+                    <TableCell className="text-xs font-semibold">
+                      <span className={sig.side === "BUY" ? "text-green-400" : "text-red-400"}>
+                        {sig.side}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono text-zinc-200 text-xs text-right tabular-nums">
+                      {sig.entry.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-mono text-red-400 text-xs text-right tabular-nums">
+                      {sig.sl.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-mono text-green-400 text-xs text-right tabular-nums">
+                      {sig.tp.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-mono text-zinc-200 text-xs text-right tabular-nums">
+                      {sig.score}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        variant="outline"
+                        className={
+                          sig.status === "open"
+                            ? "border-sky-500/40 text-sky-400 bg-sky-500/10 text-[10px]"
+                            : "border-zinc-700 text-zinc-400 bg-zinc-800/30 text-[10px]"
+                        }
+                      >
+                        {sig.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-right tabular-nums">
+                      {sig.resultR !== null ? (
+                        <span className={sig.resultR > 0 ? "text-green-400 font-semibold" : "text-red-400 font-semibold"}>
+                          {sig.resultR > 0 ? `+${sig.resultR}R` : `${sig.resultR}R`}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-600">--</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

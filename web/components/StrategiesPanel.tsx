@@ -54,7 +54,12 @@ export default function StrategiesPanel({ strategies }: StrategiesPanelProps) {
                   : "Liquidity Sweep"}
               </span>
             </div>
-            <div>{getStateBadge(strat.state, strat.enabled)}</div>
+            <div className="flex items-center space-x-2">
+              <span className="text-[11px] font-mono text-zinc-400 tabular-nums">
+                PF {strat.oosProfitFactor ? strat.oosProfitFactor.toFixed(2) : "--"}
+              </span>
+              {getStateBadge(strat.state, strat.enabled)}
+            </div>
           </div>
         ))}
       </CardContent>

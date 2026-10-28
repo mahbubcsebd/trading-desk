@@ -24,11 +24,18 @@ class SymbolState:
     regime: Dict[str, Any] = field(default_factory=lambda: {"state": "ranging", "volatility": "normal", "adx": 0.0})
     bias: Dict[str, str] = field(default_factory=lambda: {"h4": "neutral", "h1": "neutral"})
     liquidity_tracker: Optional[Any] = None
+    current_setup: Optional[Dict[str, Any]] = None
+    strategies_summary: List[Dict[str, Any]] = field(default_factory=lambda: [
+        {"id": "trend", "state": "idle", "enabled": False, "oosProfitFactor": 0.0},
+        {"id": "reversion", "state": "idle", "enabled": False, "oosProfitFactor": 0.0},
+        {"id": "sweep", "state": "idle", "enabled": False, "oosProfitFactor": 0.0},
+    ])
+    daily_limit_hit: bool = False
+    current_atr: float = 0.0
 
     def __post_init__(self):
         from app.liquidity import SymbolLiquidityTracker
         self.liquidity_tracker = SymbolLiquidityTracker(symbol=self.symbol)
-
 
     @property
     def is_fresh(self) -> bool:
@@ -48,6 +55,84 @@ class SymbolState:
         except Exception:
             pass
 
+    def recompute_setup(self) -> None:
+        """Evaluates strategies and scoring on 15m candle close."""
+        try:
+            from app.indicators import calc_indicators
+            from app.strategies import evaluate_strategies
+            from app.scoring import evaluate_best_setup, get_backtest_strategy_info
+            from app.signals import log_signal
+            from app.db import get_settings, check_daily_limit_hit
+
+            df_15m = self.get_dataframe(config.ENTRY_TF)
+            if len(df_15m) < 25:
+                return
+
+            inds = calc_indicators(df_15m)
+            signals = evaluate_strategies(df_15m, inds, self.regime, self.bias)
+            backtest_info = get_backtest_strategy_info(self.symbol)
+            settings = get_settings()
+
+            balance = float(settings.get("balance", "10000.0"))
+            risk_pct = float(settings.get("risk_pct", "1.0"))
+            daily_limit_pct = float(settings.get("daily_limit_pct", "3.0"))
+
+            self.daily_limit_hit = check_daily_limit_hit(balance, daily_limit_pct)
+
+            candle_ts = int(df_15m["ts"].iloc[-1].timestamp() * 1000)
+            candle_open = float(df_15m["open"].iloc[-1])
+            self.current_atr = float(inds["atr14"].iloc[-1]) if inds.get("atr14") is not None and not inds["atr14"].empty else 0.0
+
+            liq_metrics = (
+                self.liquidity_tracker.get_metrics(self.price)
+                if self.liquidity_tracker
+                else {
+                    "bookImbalance": 0.0,
+                    "buyWall": None,
+                    "sellWall": None,
+                    "takerBuyPct": 50.0,
+                    "oiChange15mPct": 0.0,
+                    "funding": 0.0,
+                    "liq5m": {"longUsd": 0.0, "shortUsd": 0.0},
+                }
+            )
+
+            setup, strategies_summary = evaluate_best_setup(
+                symbol=self.symbol,
+                signals=signals,
+                backtest_info=backtest_info,
+                bias=self.bias,
+                regime=self.regime,
+                liquidity=liq_metrics,
+                price=self.price,
+                candle_open=candle_open,
+                candle_ts=candle_ts,
+                is_fresh=self.is_fresh,
+                daily_limit_hit=self.daily_limit_hit,
+                balance=balance,
+                risk_pct=risk_pct,
+                qty_step=self.instrument.qty_step,
+                min_order_qty=self.instrument.min_order_qty,
+                current_atr=self.current_atr,
+            )
+
+            self.current_setup = setup
+            self.strategies_summary = strategies_summary
+
+            if setup.get("action") in ("BUY", "SELL"):
+                log_signal(
+                    symbol=self.symbol,
+                    strategy=setup["strategy"],
+                    side=setup["action"],
+                    entry=setup["entry"],
+                    sl=setup["sl"],
+                    tp=setup["tp"],
+                    score=setup["score"],
+                    created_at=candle_ts,
+                )
+        except Exception:
+            pass
+
     def set_candles(self, tf: str, candle_list: List[List[float]]) -> None:
         """Set history bars, keeping at most HISTORY_BARS[tf]."""
         max_bars = config.HISTORY_BARS.get(tf, 1000)
@@ -59,6 +144,8 @@ class SymbolState:
             self.price = float(self.candles[tf][-1][4])
         if tf in ("1h", "4h"):
             self.recompute_context()
+        if tf == config.ENTRY_TF:
+            self.recompute_setup()
 
     def update_candle(
         self, tf: str, start: int, o: float, h: float, l: float, c: float, v: float, confirm: bool
@@ -84,10 +171,17 @@ class SymbolState:
         if tf in ("1h", "4h"):
             self.recompute_context()
 
+        if confirm and tf == config.ENTRY_TF:
+            try:
+                from app.signals import update_open_signals_on_candle
+                update_open_signals_on_candle(self.symbol, start, o, h, l, c)
+            except Exception:
+                pass
+            self.recompute_setup()
+
         if confirm:
             return (self.symbol, tf, start, o, h, l, c, v)
         return None
-
 
     def get_candles(self, tf: str, limit: int = 500) -> List[List[float]]:
         candle_list = self.candles.get(tf, [])
@@ -155,9 +249,9 @@ class AppState:
                     "liq5m": {"longUsd": 0.0, "shortUsd": 0.0},
                 },
                 "strategies": [
-                    {"id": "trend", "state": "idle", "enabled": False},
-                    {"id": "reversion", "state": "idle", "enabled": False},
-                    {"id": "sweep", "state": "idle", "enabled": False},
+                    {"id": "trend", "state": "idle", "enabled": False, "oosProfitFactor": 0.0},
+                    {"id": "reversion", "state": "idle", "enabled": False, "oosProfitFactor": 0.0},
+                    {"id": "sweep", "state": "idle", "enabled": False, "oosProfitFactor": 0.0},
                 ],
                 "candle": {"tf": tf, "t": now_ms, "o": 0.0, "h": 0.0, "l": 0.0, "c": 0.0, "v": 0.0},
                 "dailyLimitHit": False,
@@ -194,15 +288,9 @@ class AppState:
             }
         )
 
-        return {
-            "symbol": sym,
-            "ts": now_ms,
-            "fresh": sym_state.is_fresh,
-            "price": price,
-            "change24hPct": round(sym_state.change_24h_pct, 2),
-            "regime": sym_state.regime,
-            "bias": sym_state.bias,
-            "setup": {
+        setup = sym_state.current_setup
+        if not setup:
+            setup = {
                 "action": "WAIT",
                 "score": 0,
                 "strategy": None,
@@ -215,19 +303,39 @@ class AppState:
                 "reasons": [],
                 "waitReason": "Initializing data feed",
                 "validUntil": 0,
-            },
+            }
+        else:
+            # Check expiration dynamically
+            setup = dict(setup)
+            if setup.get("action") in ("BUY", "SELL"):
+                valid_until = setup.get("validUntil", 0)
+                entry = setup.get("entry", 0.0)
+                atr = sym_state.current_atr
+                is_expired = False
+                if valid_until > 0 and now_ms > valid_until:
+                    is_expired = True
+                elif atr > 0 and abs(price - entry) > (0.5 * atr):
+                    is_expired = True
+
+                if is_expired:
+                    setup["expired"] = True
+
+        return {
+            "symbol": sym,
+            "ts": now_ms,
+            "fresh": sym_state.is_fresh,
+            "price": price,
+            "change24hPct": round(sym_state.change_24h_pct, 2),
+            "regime": sym_state.regime,
+            "bias": sym_state.bias,
+            "setup": setup,
             "liquidity": liq_metrics,
-
-            "strategies": [
-                {"id": "trend", "state": "idle", "enabled": False},
-                {"id": "reversion", "state": "idle", "enabled": False},
-                {"id": "sweep", "state": "idle", "enabled": False},
-            ],
+            "strategies": sym_state.strategies_summary,
             "candle": candle_obj,
-            "dailyLimitHit": False,
+            "dailyLimitHit": sym_state.daily_limit_hit,
         }
-
 
 
 # Global singleton in-memory state
 state = AppState()
+

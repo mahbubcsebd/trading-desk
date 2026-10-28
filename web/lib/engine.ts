@@ -31,6 +31,7 @@ export interface SnapshotData {
     reasons: Array<{ label: string; points: number }>;
     waitReason: string | null;
     validUntil: number;
+    expired?: boolean;
   };
   liquidity: {
     bookImbalance: number;
@@ -45,6 +46,7 @@ export interface SnapshotData {
     id: "trend" | "reversion" | "sweep";
     state: "signal" | "idle" | "disabled";
     enabled: boolean;
+    oosProfitFactor?: number;
   }>;
   candle: {
     tf: string;
@@ -134,11 +136,51 @@ export async function getBacktest(symbol: string): Promise<BacktestResult[]> {
   return res.json();
 }
 
-export function getEngineStreamUrl(symbol: string, tf: string = "15m"): string {
+export interface SignalItem {
+  id: number;
+  symbol: string;
+  strategy: string;
+  side: string;
+  entry: number;
+  sl: number;
+  tp: number;
+  score: number;
+  createdAt: number;
+  status: "open" | "closed";
+  closedAt: number | null;
+  resultR: number | null;
+}
 
+export interface SignalsResponse {
+  signals: SignalItem[];
+  stats: {
+    count: number;
+    winRate: number;
+    avgR: number;
+    expectancy: number;
+  };
+}
+
+export async function getSignals(symbol?: string, limit: number = 50): Promise<SignalsResponse> {
+  const query = new URLSearchParams();
+  if (symbol) query.set("symbol", symbol);
+  query.set("limit", limit.toString());
+
+  const res = await fetch(`${ENGINE_URL}/api/signals?${query.toString()}`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch signals: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export function getEngineStreamUrl(symbol: string, tf: string = "15m"): string {
   return `${ENGINE_URL}/api/stream?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`;
 }
 
 export function getEngineKey(): string {
   return ENGINE_KEY;
 }
+

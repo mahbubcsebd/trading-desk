@@ -49,3 +49,16 @@ This log records technical decisions, simplifications, and benchmark measurement
   - Dynamic strategy enablement flag: strategy is auto-enabled only if OOS Profit Factor >= 1.1 and OOS Expectancy > 0.
 - Implemented CLI runner (`python -m app.backtest --symbol BTCUSDT --days 60`) saving metrics to SQLite `backtests` table.
 - Exposed `/api/backtest` in FastAPI and integrated full `/backtest` comparison dashboard with limitation notices and live signal log table.
+
+## Phase P6: Scoring, Best Setup, & Signal Log
+- Implemented multi-factor scoring formula in `engine/app/scoring.py` with normalized components:
+  - Alignment (0.30): 4h bias (0.6) and 1h bias (0.4) matching trade direction.
+  - Edge (0.25): Backtest out-of-sample profit factor clamp(`profit_factor - 1`, 0, 1).
+  - Flow (0.25): Average of book imbalance, taker flow, OI confirmation, and wall block.
+  - Regime (0.10): Strategy fit with 1h ADX market regime.
+  - Net R:R (0.10): Net risk-to-reward clamped to `[0, 1]`.
+- Enforced hard filters: Strategy enabled, data freshness <= 10s, net R:R >= 1.5, daily loss limit not hit, position size >= `minOrderQty`.
+- WAIT state always provides an explicit reason (e.g. "Data is stale", "Daily loss limit reached", "Run backtest first", "Best score X, needs 60").
+- Position sizing uses `floor(riskUsd / |entry - sl|, qtyStep)` to guarantee risk never exceeds budgeted risk %.
+- Built signal logger and outcome tracker in `engine/app/signals.py` with stop-first priority on simultaneous stop/target touch and 32-bar max hold.
+- Integrated `GET /api/signals` in FastAPI and connected live signal log with live forward-test stats (Trades, Win Rate %, Avg R, Expectancy) in `/backtest` page.
