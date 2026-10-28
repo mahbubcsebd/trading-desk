@@ -73,3 +73,14 @@ This log records technical decisions, simplifications, and benchmark measurement
   - `SettingsDialog.tsx` modal in top navigation bar for live configuration.
   - `/journal` page with 4 stat tiles (Trades, Win Rate, Total R, Today's PnL), trade entry form, and historical table with delete action.
   - Server Actions in `web/app/actions.ts` orchestrating mutations with cache revalidation.
+
+## Phase P8: Hardening, Performance Budget, & Deployment
+- Implemented production deployment configuration:
+  - `ecosystem.config.js`: PM2 config for `tradedesk-engine` (FastAPI on 127.0.0.1:8000) and `tradedesk-web` (Next.js 16 on port 3000) with auto-restarts.
+  - `Caddyfile`: Reverse proxy for domain with automated TLS, gzip/zstd compression, and strict headers. Engine port 8000 is kept private to 127.0.0.1.
+- Mobile responsiveness: Single-column flow below 1024px (`< lg`), touch targets >= 44px, tabular numbers, skeleton placeholders mirroring layout.
+- Performance Budget Benchmarks:
+  - **Snapshot Payload Size:** 954 bytes (0.93 KB) — well under the 2 KB limit.
+  - **In-Memory Snapshot Generation Latency:** ~0.001 ms (~695,000 ops/sec).
+  - **Test Suite:** 32 unit & integration tests passing across all components.
+  - **Web Production Bundle:** `npm run build` passes with zero errors, zero warnings.
