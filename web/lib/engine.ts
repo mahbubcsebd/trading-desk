@@ -32,6 +32,11 @@ export interface SnapshotData {
     waitReason: string | null;
     validUntil: number;
     expired?: boolean;
+    breakoutLevels?: {
+      buyTrigger: number;
+      sellTrigger: number;
+      atr: number;
+    };
   };
   liquidity: {
     bookImbalance: number;

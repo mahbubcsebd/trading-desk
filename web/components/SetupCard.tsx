@@ -11,6 +11,7 @@ interface SetupCardProps {
   symbol: string;
   price: number;
   dailyLimitHit?: boolean;
+  liquidity?: SnapshotData["liquidity"];
 }
 
 export default function SetupCard({
@@ -18,6 +19,7 @@ export default function SetupCard({
   symbol,
   price,
   dailyLimitHit = false,
+  liquidity,
 }: SetupCardProps) {
   const [copied, setCopied] = useState(false);
 
@@ -88,9 +90,14 @@ export default function SetupCard({
                 Needs 60 to trade
               </span>
             </div>
-            <span className="text-xs text-zinc-300 font-mono font-medium">
-              ${price > 0 ? price.toFixed(2) : "0.00"}
-            </span>
+            <div className="text-right">
+              <span className="text-xs text-zinc-300 font-mono font-semibold block">
+                ${price > 0 ? price.toFixed(2) : "0.00"}
+              </span>
+              <span className="text-[10px] text-zinc-500 font-mono block">
+                Bybit Perp (Basis ~$8.65 vs Spot)
+              </span>
+            </div>
           </div>
 
           {/* Progress bar towards trigger threshold */}
@@ -137,6 +144,65 @@ export default function SetupCard({
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Pending Orders Roadmap for Exness & Bybit */}
+          {setup?.breakoutLevels && (
+            <div className="rounded-lg border border-zinc-800/90 bg-zinc-950/80 p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300 flex items-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-1.5" />
+                  Pending Order Roadmap
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                  Pre-Set in Exness
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {/* Buy Stop Card */}
+                <div className="p-2.5 rounded bg-zinc-900/90 border border-emerald-950/60">
+                  <div className="flex items-center justify-between text-[11px] font-medium text-emerald-400 mb-0.5">
+                    <span>BUY STOP</span>
+                    <span className="text-[10px] text-zinc-500">Above High</span>
+                  </div>
+                  <div className="font-mono text-zinc-100 font-bold text-sm">
+                    ${setup.breakoutLevels.buyTrigger.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                    SL: ${(setup.breakoutLevels.buyTrigger - 2 * setup.breakoutLevels.atr).toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-emerald-400 font-mono">
+                    TP: ${(setup.breakoutLevels.buyTrigger + 4 * setup.breakoutLevels.atr).toFixed(2)}
+                  </div>
+                </div>
+
+                {/* Sell Stop Card */}
+                <div className="p-2.5 rounded bg-zinc-900/90 border border-red-950/60">
+                  <div className="flex items-center justify-between text-[11px] font-medium text-red-400 mb-0.5">
+                    <span>SELL STOP</span>
+                    <span className="text-[10px] text-zinc-500">Below Low</span>
+                  </div>
+                  <div className="font-mono text-zinc-100 font-bold text-sm">
+                    ${setup.breakoutLevels.sellTrigger.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                    SL: ${(setup.breakoutLevels.sellTrigger + 2 * setup.breakoutLevels.atr).toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-red-400 font-mono">
+                    TP: ${(setup.breakoutLevels.sellTrigger - 4 * setup.breakoutLevels.atr).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Nearest Institutional Liquidity Walls */}
+              {liquidity && (
+                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-800/60 text-zinc-400 font-mono">
+                  <span>Support: <strong className="text-emerald-400">${liquidity.buyWall?.price ? liquidity.buyWall.price.toFixed(1) : "—"}</strong></span>
+                  <span>Resistance: <strong className="text-red-400">${liquidity.sellWall?.price ? liquidity.sellWall.price.toFixed(1) : "—"}</strong></span>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

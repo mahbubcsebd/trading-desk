@@ -35,6 +35,20 @@ class SymbolState:
     ])
     daily_limit_hit: bool = False
     current_atr: float = 0.0
+    index_price: float = 0.0
+
+    @property
+    def basis(self) -> float:
+        if self.index_price > 0 and self.price > 0:
+            return round(self.price - self.index_price, 2)
+        return 0.0
+
+    @property
+    def spot_price(self) -> float:
+        """Returns the real physical spot / Exness gold price."""
+        if self.index_price > 0:
+            return round(self.index_price, 2)
+        return round(self.price, 2)
 
     def __post_init__(self):
         from app.liquidity import SymbolLiquidityTracker
@@ -374,6 +388,10 @@ class AppState:
                         candle_open=c_open,
                         backtest_info=b_info,
                     )
+                    last20 = c_list[-20:] if len(c_list) >= 20 else c_list
+                    high20 = max([float(b[2]) for b in last20]) if last20 else price * 1.002
+                    low20 = min([float(b[3]) for b in last20]) if last20 else price * 0.998
+                    atr = sym_state.current_atr if sym_state.current_atr > 0 else (high20 - low20) / 4.0
                     setup = {
                         "action": "WAIT",
                         "score": amb_score,
@@ -387,6 +405,11 @@ class AppState:
                         "reasons": amb_reasons,
                         "waitReason": amb_wait,
                         "validUntil": 0,
+                        "breakoutLevels": {
+                            "buyTrigger": round(high20, 2),
+                            "sellTrigger": round(low20, 2),
+                            "atr": round(atr, 2),
+                        },
                     }
                 except Exception:
                     setup = dict(setup) if setup else {
@@ -418,11 +441,49 @@ class AppState:
             if is_expired:
                 setup["expired"] = True
 
+        basis = sym_state.basis
+        spot_price = sym_state.spot_price
+
+        # Attach accurate Exness broker values to setup
+        if setup:
+            bo = setup.get("breakoutLevels")
+            if bo:
+                exness_buy = round(bo["buyTrigger"] - basis, 2)
+                exness_sell = round(bo["sellTrigger"] - basis, 2)
+                atr = bo.get("atr", 0.0)
+                setup["exness"] = {
+                    "price": spot_price,
+                    "basis": basis,
+                    "buyTrigger": exness_buy,
+                    "sellTrigger": exness_sell,
+                    "atr": atr,
+                    "buySl": round(exness_buy - (2.0 * atr), 2),
+                    "buyTp": round(exness_buy + (4.0 * atr), 2),
+                    "sellSl": round(exness_sell + (2.0 * atr), 2),
+                    "sellTp": round(exness_sell - (4.0 * atr), 2),
+                    "supportWall": round(liq_metrics["buyWall"]["price"] - basis, 2) if liq_metrics.get("buyWall") else None,
+                    "resistanceWall": round(liq_metrics["sellWall"]["price"] - basis, 2) if liq_metrics.get("sellWall") else None,
+                }
+            elif setup.get("action") in ("BUY", "SELL"):
+                entry = setup.get("entry", 0.0)
+                sl = setup.get("sl", 0.0)
+                tp = setup.get("tp", 0.0)
+                setup["exness"] = {
+                    "price": spot_price,
+                    "basis": basis,
+                    "entry": round(entry - basis, 2) if entry > 0 else 0.0,
+                    "sl": round(sl - basis, 2) if sl > 0 else 0.0,
+                    "tp": round(tp - basis, 2) if tp > 0 else 0.0,
+                }
+
         return {
             "symbol": sym,
             "ts": now_ms,
             "fresh": sym_state.is_fresh,
             "price": price,
+            "spotPrice": spot_price,
+            "exnessPrice": spot_price,
+            "basis": basis,
             "change24hPct": round(sym_state.change_24h_pct, 2),
             "regime": sym_state.regime,
             "bias": sym_state.bias,

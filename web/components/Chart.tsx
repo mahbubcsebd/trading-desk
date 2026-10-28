@@ -414,6 +414,23 @@ export default function Chart({
     }
   };
 
+  useEffect(() => {
+    if (chartMode === "quant" && containerRef.current && chartRef.current) {
+      setTimeout(() => {
+        if (!containerRef.current || !chartRef.current) return;
+        chartRef.current.applyOptions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        });
+        if (candles.length > 0) {
+          const fromIdx = Math.max(0, candles.length - 45);
+          const toIdx = candles.length + 8;
+          chartRef.current.timeScale().setVisibleLogicalRange({ from: fromIdx, to: toIdx });
+        }
+      }, 50);
+    }
+  }, [chartMode, candles.length]);
+
   const isUp = (legendData?.change ?? 0) >= 0;
   const changeColor = isUp ? "text-[#089981]" : "text-[#F23645]";
 
@@ -513,13 +530,27 @@ export default function Chart({
         </div>
       </div>
 
-      {/* Main Chart Area */}
-      {chartMode === "exness" ? (
-        <div className="relative flex-1 min-h-[460px] w-full">
+      {/* Main Chart Area with Zero-Layout-Shift Stacking */}
+      <div className="relative flex-1 min-h-[460px] w-full overflow-hidden">
+        {/* 1. TradingView Exness/OANDA Feed */}
+        <div
+          className={`absolute inset-0 w-full h-full transition-opacity duration-200 ${
+            chartMode === "exness"
+              ? "opacity-100 z-10 pointer-events-auto"
+              : "opacity-0 pointer-events-none -z-10"
+          }`}
+        >
           <TradingViewChart symbol={symbol} activeTf={activeTf} />
         </div>
-      ) : (
-        <div className="flex flex-col flex-1 w-full overflow-hidden">
+
+        {/* 2. Bybit Quant Walls Feed */}
+        <div
+          className={`absolute inset-0 flex flex-col w-full h-full transition-opacity duration-200 ${
+            chartMode === "quant"
+              ? "opacity-100 z-10 pointer-events-auto"
+              : "opacity-0 pointer-events-none -z-10"
+          }`}
+        >
           {/* TradingView / Exness Style Legend Overlay for Quant Mode */}
           {legendData && (
             <div className="px-4 py-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono bg-[#0B0E14]/95 border-b border-zinc-900/60 select-none z-10">
@@ -554,7 +585,7 @@ export default function Chart({
           {/* Chart Canvas */}
           <div className="relative flex-1 min-h-[440px] w-full" ref={containerRef} />
         </div>
-      )}
+      </div>
     </div>
   );
 }
