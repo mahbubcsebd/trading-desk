@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from app import config, db
-from app.bybit import BybitRestClient
+from app.exness import ExnessRestClient
 from app.indicators import (
     calc_adx,
     calc_atr,
@@ -26,7 +26,7 @@ logger = logging.getLogger("backtest")
 
 async def backfill_candles(symbol: str, tf: str = "15m", target_bars: int = 5000) -> int:
     """
-    Backfills candles from Bybit REST into SQLite database.
+    Backfills candles via ExnessRestClient into SQLite database.
     """
     db.init_db()
     existing = db.get_candles(symbol, tf, limit=target_bars)
@@ -35,39 +35,19 @@ async def backfill_candles(symbol: str, tf: str = "15m", target_bars: int = 5000
         return len(existing)
 
     logger.info(f"Backfilling {symbol} ({tf}) towards {target_bars} bars...")
-    client = BybitRestClient()
-    interval = config.TF_TO_BYBIT_INTERVAL.get(tf, "15")
+    client = ExnessRestClient()
+    loop = asyncio.get_event_loop()
+    bars = await loop.run_in_executor(
+        None,
+        lambda: client.get_klines(symbol, tf, limit=target_bars)
+    )
+    if bars:
+        batch = [(symbol, tf, b[0], b[1], b[2], b[3], b[4], b[5]) for b in bars]
+        db.save_candles(batch)
+        logger.info(f"Saved {len(batch)} bars for {symbol} ({tf})")
 
-    current_oldest_ts = existing[0][0] if existing else None
-    collected_count = len(existing)
-
-    while collected_count < target_bars:
-        limit = min(1000, target_bars - collected_count)
-        url = f"{config.BYBIT_REST_BASE}/v5/market/kline?category=linear&symbol={symbol}&interval={interval}&limit={limit}"
-        if current_oldest_ts:
-            url += f"&end={current_oldest_ts - 1}"
-
-        import httpx
-        async with httpx.AsyncClient(timeout=15.0) as http_client:
-            resp = await http_client.get(url)
-            if resp.status_code != 200:
-                logger.warning(f"Failed to fetch kline batch: {resp.status_code}")
-                break
-            data = resp.json()
-            rows = data.get("result", {}).get("list", [])
-            if not rows:
-                break
-
-            batch = []
-            for r in rows:
-                ts = int(r[0])
-                batch.append((symbol, tf, ts, float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[5])))
-
-            db.save_candles(batch)
-            collected_count += len(batch)
-            current_oldest_ts = min(b[2] for b in batch)
-            logger.info(f"Saved {len(batch)} bars. Total: {collected_count}/{target_bars}")
-            await asyncio.sleep(0.1)
+    existing = db.get_candles(symbol, tf, limit=target_bars)
+    return len(existing)
 
     return collected_count
 

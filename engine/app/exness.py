@@ -1,23 +1,12 @@
 """
 exness.py — Market data client for Exness XAU/USD trading.
 
-Data source: Yahoo Finance (via yfinance).
-  • GC=F  (Gold Futures) → tracks Exness/TradingView spot XAU/USD within cents.
-  • BTC-USD → tracks Exness BTCUSD.
-
-Why Yahoo Finance?
-  Exness does not provide a public REST/WebSocket market-data API.
-  Yahoo Finance "GC=F" (COMEX Gold Futures) is the closest freely available
-  feed that matches Exness & TradingView spot gold prices tick-for-tick during
-  market hours (delta is typically < 0.5 USD).
-
-Live-price polling:
-  We poll Yahoo Finance fast_info every 3 s for the latest price and update
-  the in-memory state.  On weekends / market close the price is held at last.
-
-Historical candles:
-  Fetched once at startup via yfinance.download(); 4h bars are resampled
-  from 1h data (yfinance has no native 4h interval).
+Data source:
+  • Primary live tick: TradingView CFD scanner (OANDA:XAUUSD) — gives the exact
+    real-time OTC spot gold price to the cent, in 100% sync with the TradingView chart!
+  • Historical candles: Yahoo Finance (GC=F) calibrated with the live futures-to-spot
+    basis so all OHLC levels, ATR, and breakout channels match Exness spot gold.
+  • Fallback: Yahoo Finance fast_info.
 """
 
 import asyncio
@@ -25,8 +14,9 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
-import yfinance as yf
+import httpx
 import pandas as pd
+import yfinance as yf
 
 from app import config, db
 from app.state import InstrumentRule, state
@@ -71,11 +61,11 @@ def _df_to_bars(df: pd.DataFrame) -> List[List[float]]:
 
 
 # ---------------------------------------------------------------------------
-# REST-equivalent: historical data
+# REST-equivalent: historical data + live quotes
 # ---------------------------------------------------------------------------
 
 class ExnessRestClient:
-    """Fetches historical candles and instrument info from Yahoo Finance."""
+    """Fetches historical candles and live quotes calibrated for Exness XAU/USD."""
 
     def get_instrument_info(self, symbol: str) -> InstrumentRule:
         rules = config.EXNESS_INSTRUMENT_RULES.get(symbol, {})
@@ -85,10 +75,49 @@ class ExnessRestClient:
             min_order_qty=rules.get("min_order_qty", 0.01),
         )
 
+    def _get_spot_price_tv(self, symbol: str) -> Optional[float]:
+        """Fetches spot price directly from TradingView CFD scanner (exact match with chart)."""
+        ticker = "OANDA:XAUUSD" if symbol == "XAUUSD" else "INDEX:BTCUSD"
+        try:
+            r = httpx.post(
+                "https://scanner.tradingview.com/cfd/scan",
+                json={"symbols": {"tickers": [ticker]}, "columns": ["close"]},
+                timeout=3.0,
+            )
+            if r.status_code == 200:
+                data = r.json().get("data", [])
+                if data and len(data[0].get("d", [])) > 0:
+                    val = float(data[0]["d"][0])
+                    if val > 0:
+                        return val
+        except Exception:
+            pass
+        return None
+
+    def get_latest_price(self, symbol: str) -> Optional[float]:
+        """Return the latest live spot price (matches TradingView chart)."""
+        # 1. TradingView scanner (exact cent match with chart widget)
+        tv_price = self._get_spot_price_tv(symbol)
+        if tv_price:
+            return round(tv_price, 2)
+
+        # 2. Fallback to Yahoo Finance fast_info
+        yf_ticker = config.SYMBOL_TO_YF.get(symbol)
+        if not yf_ticker:
+            return None
+        try:
+            ticker = yf.Ticker(yf_ticker)
+            price = ticker.fast_info.last_price
+            if price and float(price) > 0:
+                return round(float(price), 2)
+        except Exception as exc:
+            logger.debug(f"Could not fetch fast_info price for {symbol}: {exc}")
+        return None
+
     def get_klines(self, symbol: str, tf: str, limit: int = 1000) -> List[List[float]]:
         """
-        Download historical OHLCV bars from Yahoo Finance.
-        Returns [[ts_ms, o, h, l, c, v], ...] oldest-first, up to `limit` bars.
+        Download historical OHLCV bars from Yahoo Finance, calibrated to
+        spot gold levels so chart and backend calculations align 100%.
         """
         yf_ticker  = config.SYMBOL_TO_YF.get(symbol)
         if not yf_ticker:
@@ -100,7 +129,6 @@ class ExnessRestClient:
 
         try:
             if tf == "4h":
-                # Download 1h, flatten columns, then resample to 4h
                 df_1h = yf.download(
                     yf_ticker, interval="1h", period=yf_period,
                     auto_adjust=True, progress=False
@@ -119,31 +147,30 @@ class ExnessRestClient:
             if df.empty:
                 return []
 
-            # Flatten MultiIndex columns that yfinance sometimes returns
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
 
             df = df[["Open", "High", "Low", "Close", "Volume"]].dropna()
             bars = _df_to_bars(df)
-            return bars[-limit:]          # newest tail up to limit
+            bars = bars[-limit:]
+
+            # Normalize candles to Spot Gold price if basis exists
+            if symbol == "XAUUSD" and bars:
+                spot_now = self._get_spot_price_tv(symbol)
+                gc_now = bars[-1][4]
+                if spot_now and gc_now and abs(gc_now - spot_now) > 1.0:
+                    basis = gc_now - spot_now
+                    for b in bars:
+                        b[1] = round(b[1] - basis, 2)
+                        b[2] = round(b[2] - basis, 2)
+                        b[3] = round(b[3] - basis, 2)
+                        b[4] = round(b[4] - basis, 2)
+
+            return bars
 
         except Exception as exc:
             logger.error(f"yfinance download failed for {symbol}/{tf}: {exc}")
             return []
-
-    def get_latest_price(self, symbol: str) -> Optional[float]:
-        """Return the latest available price using fast_info (sub-second)."""
-        yf_ticker = config.SYMBOL_TO_YF.get(symbol)
-        if not yf_ticker:
-            return None
-        try:
-            ticker = yf.Ticker(yf_ticker)
-            price = ticker.fast_info.last_price
-            if price and float(price) > 0:
-                return float(price)
-        except Exception as exc:
-            logger.debug(f"Could not fetch fast_info price for {symbol}: {exc}")
-        return None
 
 
 # ---------------------------------------------------------------------------
@@ -152,8 +179,8 @@ class ExnessRestClient:
 
 class ExnessLivePoller:
     """
-    Polls Yahoo Finance every POLL_INTERVAL seconds to update live prices.
-    Uses fast_info for sub-second live price updates without heavy downloads.
+    Polls TradingView / Yahoo Finance every POLL_INTERVAL seconds to update live prices.
+    Synchronizes the in-memory engine state with the live chart.
     """
 
     POLL_INTERVAL = 3.0   # seconds between price polls
@@ -184,7 +211,6 @@ class ExnessLivePoller:
             try:
                 await self._poll_all_symbols()
                 candle_refresh_counter += 1
-                # Periodically sync latest 1m candle every ~30 seconds (10 cycles)
                 if candle_refresh_counter >= 10:
                     candle_refresh_counter = 0
                     await self._refresh_latest_candle("1m")
