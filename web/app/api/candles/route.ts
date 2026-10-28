@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const symbol = searchParams.get("symbol") || "XAUUSDT";
+  const symbol = searchParams.get("symbol") || "XAUUSD"; // Exness symbol format
   const tf = searchParams.get("tf") || "15m";
   const limit = parseInt(searchParams.get("limit") || "500", 10);
 

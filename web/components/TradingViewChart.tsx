@@ -20,8 +20,8 @@ const TF_MAP: Record<string, string> = {
 export default function TradingViewChart({ symbol, activeTf }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Map to exact global spot gold / btc feed
-  const tvSymbol = symbol === "XAUUSDT" ? "OANDA:XAUUSD" : "BINANCE:BTCUSDT";
+  // Map to Exness spot gold / BTC feed on TradingView
+  const tvSymbol = symbol === "XAUUSD" ? "EXNESS:XAUUSD" : "EXNESS:BTCUSD";
   const interval = TF_MAP[activeTf] || "5";
 
   useEffect(() => {

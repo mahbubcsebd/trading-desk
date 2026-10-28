@@ -112,7 +112,7 @@ def test_hard_filters_and_wait_reasons():
 
     # 1. Stale Data
     setup, _ = evaluate_best_setup(
-        symbol="BTCUSDT",
+        symbol="BTCUSD",
         signals=signals,
         backtest_info=backtest_info,
         bias={"h4": "bull", "h1": "bull"},
@@ -133,7 +133,7 @@ def test_hard_filters_and_wait_reasons():
 
     # 2. Daily Limit Hit
     setup2, _ = evaluate_best_setup(
-        symbol="BTCUSDT",
+        symbol="BTCUSD",
         signals=signals,
         backtest_info=backtest_info,
         bias={"h4": "bull", "h1": "bull"},
@@ -155,7 +155,7 @@ def test_hard_filters_and_wait_reasons():
     # 3. Strategy Disabled
     disabled_backtest = {"trend": {"enabled": False, "profit_factor": 0.0}}
     setup3, _ = evaluate_best_setup(
-        symbol="BTCUSDT",
+        symbol="BTCUSD",
         signals=signals,
         backtest_info=disabled_backtest,
         bias={"h4": "bull", "h1": "bull"},
@@ -186,7 +186,7 @@ def test_signals_db_logging_and_outcomes():
         # 1. Log a BUY signal
         t0 = 1700000000000
         sig_id = log_signal(
-            symbol="BTCUSDT",
+            symbol="BTCUSD",
             strategy="trend",
             side="BUY",
             entry=100.0,
@@ -200,7 +200,7 @@ def test_signals_db_logging_and_outcomes():
 
         # Try inserting duplicate: should be ignored due to UNIQUE constraint
         dup_id = log_signal(
-            symbol="BTCUSDT",
+            symbol="BTCUSD",
             strategy="trend",
             side="BUY",
             entry=100.0,
@@ -211,7 +211,7 @@ def test_signals_db_logging_and_outcomes():
             db_path=db_path,
         )
         # Check that we still have only 1 signal
-        log = get_signals_log(symbol="BTCUSDT", db_path=db_path)
+        log = get_signals_log(symbol="BTCUSD", db_path=db_path)
         assert len(log["signals"]) == 1
         assert log["signals"][0]["status"] == "open"
 
@@ -219,7 +219,7 @@ def test_signals_db_logging_and_outcomes():
         # Candle touches both SL (90) and TP (120): low=89, high=121
         t1 = t0 + 15 * 60 * 1000
         closed_count = update_open_signals_on_candle(
-            symbol="BTCUSDT",
+            symbol="BTCUSD",
             candle_ts=t1,
             o=100.0,
             h=121.0,
@@ -229,7 +229,7 @@ def test_signals_db_logging_and_outcomes():
         )
         assert closed_count == 1
 
-        updated_log = get_signals_log(symbol="BTCUSDT", db_path=db_path)
+        updated_log = get_signals_log(symbol="BTCUSD", db_path=db_path)
         sig = updated_log["signals"][0]
         assert sig["status"] == "closed"
         assert sig["resultR"] == -1.0  # Stop first prioritized!
@@ -238,7 +238,7 @@ def test_signals_db_logging_and_outcomes():
         # 3. Log a second signal that hits target
         t2 = t1 + 15 * 60 * 1000
         log_signal(
-            symbol="BTCUSDT",
+            symbol="BTCUSD",
             strategy="sweep",
             side="BUY",
             entry=100.0,
@@ -252,7 +252,7 @@ def test_signals_db_logging_and_outcomes():
         t3 = t2 + 15 * 60 * 1000
         # Target hit: low=95, high=122
         closed_count = update_open_signals_on_candle(
-            symbol="BTCUSDT",
+            symbol="BTCUSD",
             candle_ts=t3,
             o=101.0,
             h=122.0,
@@ -262,7 +262,7 @@ def test_signals_db_logging_and_outcomes():
         )
         assert closed_count == 1
 
-        final_log = get_signals_log(symbol="BTCUSDT", db_path=db_path)
+        final_log = get_signals_log(symbol="BTCUSD", db_path=db_path)
         assert len(final_log["signals"]) == 2
         # Target hit trade
         assert final_log["signals"][0]["status"] == "closed"

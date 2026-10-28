@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const symbol = searchParams.get("symbol") || "BTCUSDT";
+  const symbol = searchParams.get("symbol") || "XAUUSD"; // Exness default
   const tf = searchParams.get("tf") || "15m";
 
   const engineUrl = getEngineStreamUrl(symbol, tf);

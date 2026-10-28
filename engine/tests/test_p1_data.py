@@ -28,8 +28,8 @@ def test_health_with_auth(client):
     data = res.json()
     assert data["ok"] is True
     assert "feed" in data
-    assert "BTCUSDT" in data["feed"]
-    assert "XAUUSDT" in data["feed"]
+    assert "BTCUSD" in data["feed"]
+    assert "XAUUSD" in data["feed"]
 
 
 def test_db_operations():
@@ -44,12 +44,12 @@ def test_db_operations():
 
         # Save and retrieve candles
         candles_data = [
-            ("BTCUSDT", "15m", 1000, 100.0, 110.0, 95.0, 105.0, 50.0),
-            ("BTCUSDT", "15m", 2000, 105.0, 115.0, 102.0, 112.0, 60.0),
+            ("BTCUSD", "15m", 1000, 100.0, 110.0, 95.0, 105.0, 50.0),
+            ("BTCUSD", "15m", 2000, 105.0, 115.0, 102.0, 112.0, 60.0),
         ]
         db.save_candles(candles_data, db_path)
 
-        retrieved = db.get_candles("BTCUSDT", "15m", limit=10, db_path=db_path)
+        retrieved = db.get_candles("BTCUSD", "15m", limit=10, db_path=db_path)
         assert len(retrieved) == 2
         # Oldest first
         assert retrieved[0][0] == 1000
@@ -61,7 +61,7 @@ def test_db_operations():
 
 
 def test_state_candle_update():
-    sym_state = state.get_symbol("BTCUSDT")
+    sym_state = state.get_symbol("BTCUSD")
     assert sym_state is not None
 
     # Initial set
@@ -83,7 +83,7 @@ def test_state_candle_update():
     # Closed candle update (confirm=True)
     confirmed = sym_state.update_candle("15m", 2000, 102.0, 110.0, 101.0, 109.5, 16.0, confirm=True)
     assert confirmed is not None
-    assert confirmed[0] == "BTCUSDT"
+    assert confirmed[0] == "BTCUSD"
     assert confirmed[1] == "15m"
     assert confirmed[2] == 2000
     assert confirmed[6] == 109.5  # close
@@ -91,7 +91,7 @@ def test_state_candle_update():
 
 def test_candles_api(client):
     # Populate memory state
-    sym_state = state.get_symbol("BTCUSDT")
+    sym_state = state.get_symbol("BTCUSD")
     sym_state.set_candles("15m", [
         [1000, 100.0, 105.0, 98.0, 102.0, 10.0],
         [2000, 102.0, 108.0, 101.0, 107.0, 12.0],
@@ -99,7 +99,7 @@ def test_candles_api(client):
 
     # Valid request
     res = client.get(
-        "/api/candles?symbol=BTCUSDT&tf=15m&limit=5",
+        "/api/candles?symbol=BTCUSD&tf=15m&limit=5",
         headers={"X-Engine-Key": config.ENGINE_KEY},
     )
     assert res.status_code == 200
@@ -116,7 +116,7 @@ def test_candles_api(client):
 
     # Invalid tf
     res = client.get(
-        "/api/candles?symbol=BTCUSDT&tf=99m",
+        "/api/candles?symbol=BTCUSD&tf=99m",
         headers={"X-Engine-Key": config.ENGINE_KEY},
     )
     assert res.status_code == 400
@@ -124,12 +124,12 @@ def test_candles_api(client):
 
 def test_snapshot_api(client):
     res = client.get(
-        "/api/snapshot?symbol=BTCUSDT&tf=15m",
+        "/api/snapshot?symbol=BTCUSD&tf=15m",
         headers={"X-Engine-Key": config.ENGINE_KEY},
     )
     assert res.status_code == 200
     data = res.json()
-    assert data["symbol"] == "BTCUSDT"
+    assert data["symbol"] == "BTCUSD"
     assert "candle" in data
     assert "regime" in data
     assert "bias" in data

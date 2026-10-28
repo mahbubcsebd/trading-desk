@@ -24,7 +24,7 @@ interface JournalClientProps {
 }
 
 export default function JournalClient({ initialTrades, initialStats }: JournalClientProps) {
-  const [symbol, setSymbol] = useState("BTCUSDT");
+  const [symbol, setSymbol] = useState("XAUUSD"); // Exness default
   const [side, setSide] = useState("BUY");
   const [entry, setEntry] = useState("");
   const [exit, setExit] = useState("");
@@ -174,8 +174,8 @@ export default function JournalClient({ initialTrades, initialStats }: JournalCl
                   onChange={(e) => setSymbol(e.target.value)}
                   className="flex h-8 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 font-medium focus:outline-none"
                 >
-                  <option value="BTCUSDT">BTCUSDT</option>
-                  <option value="XAUUSDT">XAUUSDT</option>
+                  <option value="XAUUSD">XAUUSD (Gold — Exness)</option>
+                  <option value="BTCUSD">BTCUSD (Bitcoin — Exness)</option>
                 </select>
               </div>
 

@@ -22,13 +22,13 @@ async function BacktestData() {
   };
 
   try {
-    btcResults = await getBacktest("BTCUSDT");
+    btcResults = await getBacktest("BTCUSD");
   } catch {
     btcResults = [];
   }
 
   try {
-    xauResults = await getBacktest("XAUUSDT");
+    xauResults = await getBacktest("XAUUSD");
   } catch {
     xauResults = [];
   }
@@ -152,8 +152,8 @@ async function BacktestData() {
 
   return (
     <div className="space-y-8">
-      {renderTable("Bitcoin Perpetual", "BTCUSDT", btcResults)}
-      {renderTable("Gold Perpetual", "XAUUSDT", xauResults)}
+      {renderTable("Bitcoin (Exness BTCUSD)", "BTCUSD", btcResults)}
+      {renderTable("Gold (Exness XAUUSD)", "XAUUSD", xauResults)}
 
       {/* Limitation Notice */}
       <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/30 p-4 text-xs text-zinc-400 space-y-1">

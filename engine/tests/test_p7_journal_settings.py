@@ -64,7 +64,7 @@ def test_journal_pnl_and_r_multiple():
     try:
         init_db(db_path=db_path)
 
-        # 1. Winning BUY trade on BTCUSDT
+        # 1. Winning BUY trade on BTCUSD
         # Entry: 80,000, Exit: 82,000 (gain 2,000), SL: 79,000 (risk 1,000), Qty: 0.1 BTC
         # Gross gain = 2,000 * 0.1 = $200
         # Cost = 80,000 * 0.1 * 2 * (0.00055 + 0.0002) = 8,000 * 0.0015 = $12
@@ -72,7 +72,7 @@ def test_journal_pnl_and_r_multiple():
         # Risk denom = (1,000 * 0.1) + 12 = 100 + 12 = $112
         # R-Multiple = 188 / 112 = 1.68R
         trade_id = add_journal_trade(
-            symbol="BTCUSDT",
+            symbol="BTCUSD",
             side="BUY",
             entry=80000.0,
             exit_price=82000.0,
@@ -113,7 +113,7 @@ def test_daily_loss_limit_and_delete_update():
         # Default balance $10,000, daily limit 3% => max loss $300
         # Log a losing trade with -$350 loss
         trade_id = add_journal_trade(
-            symbol="XAUUSDT",
+            symbol="XAUUSD",
             side="BUY",
             entry=2700.0,
             exit_price=2660.0,  # Loss of $40/oz on 10 oz = -$400 gross
@@ -140,7 +140,7 @@ def test_daily_loss_limit_and_delete_update():
             candle_ts=1700000000000,
         )
         setup, _ = evaluate_best_setup(
-            symbol="BTCUSDT",
+            symbol="BTCUSD",
             signals={"trend": sig, "reversion": None, "sweep": None},
             backtest_info={"trend": {"enabled": True, "profit_factor": 1.5}},
             bias={"h4": "bull", "h1": "bull"},

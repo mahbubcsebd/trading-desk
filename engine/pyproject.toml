@@ -1,7 +1,7 @@
 [project]
 name = "engine"
 version = "0.1.0"
-description = "TradeDesk engine backend"
+description = "TradeDesk engine backend — Exness XAU/USD edition"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -11,6 +11,9 @@ dependencies = [
     "pandas>=3.1.0",
     "uvicorn[standard]>=0.54.0",
     "websockets>=17.3",
+    # Exness data source: Yahoo Finance (GC=F tracks spot XAU/USD)
+    "yfinance>=0.2.55",
+    "python-dotenv>=1.0.0",
 ]
 
 [tool.uv]

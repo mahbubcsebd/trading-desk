@@ -100,26 +100,26 @@ export default function DashboardView({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setSymbol("XAUUSDT")}
+            onClick={() => setSymbol("XAUUSD")}
             className={`h-8 px-4 font-semibold text-xs rounded transition-colors ${
-              symbol === "XAUUSDT"
+              symbol === "XAUUSD"
                 ? "bg-zinc-100 text-zinc-900 shadow"
                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
             }`}
           >
-            Gold (XAUUSDT)
+            Gold (XAU/USD) — Exness
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setSymbol("BTCUSDT")}
+            onClick={() => setSymbol("BTCUSD")}
             className={`h-8 px-4 font-semibold text-xs rounded transition-colors ${
-              symbol === "BTCUSDT"
+              symbol === "BTCUSD"
                 ? "bg-zinc-100 text-zinc-900 shadow"
                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
             }`}
           >
-            Bitcoin (BTCUSDT)
+            Bitcoin (BTC/USD)
           </Button>
         </div>
 

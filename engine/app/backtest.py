@@ -378,7 +378,7 @@ def run_backtest_for_symbol(symbol: str, target_bars: int = 4000) -> List[Dict[s
 
 async def main():
     parser = argparse.ArgumentParser(description="TradeDesk Backtest Engine")
-    parser.add_argument("--symbol", default="BTCUSDT", help="Symbol to backtest (e.g. BTCUSDT, XAUUSDT)")
+    parser.add_argument("--symbol", default="BTCUSD", help="Symbol to backtest (e.g. BTCUSD, XAUUSD)")
     parser.add_argument("--all", action="store_true", help="Run backtest for all symbols")
     parser.add_argument("--backfill", action="store_true", help="Backfill historical candles before running")
     parser.add_argument("--bars", type=int, default=3000, help="Target bars for backtest")

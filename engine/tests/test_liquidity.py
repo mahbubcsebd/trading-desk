@@ -28,7 +28,7 @@ def test_orderbook_snapshot_and_delta():
 
 
 def test_liquidity_tracker_metrics():
-    tracker = SymbolLiquidityTracker(symbol="BTCUSDT")
+    tracker = SymbolLiquidityTracker(symbol="BTCUSD")
     price = 80000.0
 
     # ±0.25% is [79800, 80200]

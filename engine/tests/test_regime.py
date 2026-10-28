@@ -50,7 +50,7 @@ def test_calc_bias():
 
 
 def test_symbol_state_context_update():
-    state = SymbolState(symbol="BTCUSDT")
+    state = SymbolState(symbol="BTCUSD")
     n = 60
     bars_1h = [
         [1000 + i * 3600000, 100.0 + i, 102.0 + i, 98.0 + i, 101.0 + i, 50.0]

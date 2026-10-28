@@ -9,7 +9,7 @@ class SettingsUpdate(BaseModel):
 
 
 class JournalCreate(BaseModel):
-    symbol: str = Field(..., description="Symbol, e.g. BTCUSDT or XAUUSDT")
+    symbol: str = Field(..., description="Symbol, e.g. BTCUSD or XAUUSD")
     side: str = Field(..., description="BUY or SELL")
     entry: float = Field(..., gt=0, description="Entry price")
     exit: float = Field(..., gt=0, description="Exit price")

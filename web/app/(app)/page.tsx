@@ -6,7 +6,7 @@ import { connection } from "next/server";
 
 async function DashboardDataLoader() {
   await connection();
-  const initialSymbol = "XAUUSDT";
+  const initialSymbol = "XAUUSD"; // Exness symbol format
   let snapshot: SnapshotData;
   let candles: Array<[number, number, number, number, number, number]> = [];
 
@@ -14,7 +14,7 @@ async function DashboardDataLoader() {
     snapshot = await getSnapshot(initialSymbol, "15m");
   } catch {
     snapshot = {
-      symbol: initialSymbol,
+      symbol: initialSymbol, // XAUUSD
       ts: Date.now(),
       fresh: false,
       price: 0,
