@@ -184,3 +184,116 @@ export function getEngineKey(): string {
   return ENGINE_KEY;
 }
 
+export interface SettingsData {
+  balance: number;
+  risk_pct: number;
+  daily_limit_pct: number;
+}
+
+export async function getSettings(): Promise<SettingsData> {
+  const res = await fetch(`${ENGINE_URL}/api/settings`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch settings: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function updateSettings(body: Partial<SettingsData>): Promise<SettingsData> {
+  const res = await fetch(`${ENGINE_URL}/api/settings`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Engine-Key": ENGINE_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update settings: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export interface JournalTrade {
+  id: number;
+  symbol: string;
+  side: "BUY" | "SELL";
+  entry: number;
+  exit: number;
+  sl: number;
+  qty: number;
+  openedAt: number;
+  closedAt: number;
+  pnlUsd: number;
+  rMultiple: number;
+  notes: string;
+}
+
+export interface JournalStats {
+  trades: number;
+  winRate: number;
+  totalR: number;
+  expectancy: number;
+  todayPnlUsd: number;
+  dailyLimitHit: boolean;
+}
+
+export async function getJournal(limit: number = 100): Promise<JournalTrade[]> {
+  const res = await fetch(`${ENGINE_URL}/api/journal?limit=${limit}`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch journal: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function addJournalTrade(trade: {
+  symbol: string;
+  side: string;
+  entry: number;
+  exit: number;
+  sl: number;
+  qty: number;
+  notes?: string;
+}): Promise<{ ok: boolean; id: number }> {
+  const res = await fetch(`${ENGINE_URL}/api/journal`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Engine-Key": ENGINE_KEY,
+    },
+    body: JSON.stringify(trade),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to add journal trade: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function deleteJournalTrade(tradeId: number): Promise<{ ok: boolean }> {
+  const res = await fetch(`${ENGINE_URL}/api/journal/${tradeId}`, {
+    method: "DELETE",
+    headers: { "X-Engine-Key": ENGINE_KEY },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to delete journal trade: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function getJournalStats(): Promise<JournalStats> {
+  const res = await fetch(`${ENGINE_URL}/api/journal/stats`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch journal stats: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+

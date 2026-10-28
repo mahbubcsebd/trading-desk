@@ -62,3 +62,14 @@ This log records technical decisions, simplifications, and benchmark measurement
 - Position sizing uses `floor(riskUsd / |entry - sl|, qtyStep)` to guarantee risk never exceeds budgeted risk %.
 - Built signal logger and outcome tracker in `engine/app/signals.py` with stop-first priority on simultaneous stop/target touch and 32-bar max hold.
 - Integrated `GET /api/signals` in FastAPI and connected live signal log with live forward-test stats (Trades, Win Rate %, Avg R, Expectancy) in `/backtest` page.
+
+## Phase P7: Journal, Settings, & Daily Loss Limit
+- Implemented settings storage (`balance`, `risk_pct`, `daily_limit_pct`) in SQLite `settings` table with endpoints `GET / PUT /api/settings`.
+- Updating settings recomputes position sizing across active setups instantly.
+- Built trade journaling backend (`engine/app/db.py`) with automatic fee & slippage deductions for `pnl_usd` and risk-adjusted `r_multiple`.
+- Exposed `/api/journal` (`GET`, `POST`, `DELETE`) and `/api/journal/stats` in FastAPI.
+- Implemented daily loss threshold detection (`check_daily_limit_hit`): if today's realized loss exceeds `balance * daily_limit_pct / 100`, `dailyLimitHit` triggers `True`, locking new setups to `WAIT` with an alert banner on Setup Card and Journal.
+- Built interactive frontend:
+  - `SettingsDialog.tsx` modal in top navigation bar for live configuration.
+  - `/journal` page with 4 stat tiles (Trades, Win Rate, Total R, Today's PnL), trade entry form, and historical table with delete action.
+  - Server Actions in `web/app/actions.ts` orchestrating mutations with cache revalidation.

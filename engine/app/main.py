@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 import json
 from app import config, db
 from app.bybit import BybitRestClient, BybitWsClient
+from app.schemas import SettingsUpdate, JournalCreate
 from app.state import state
 
 
@@ -198,6 +199,89 @@ async def get_signals_endpoint(
             detail=f"Invalid symbol '{symbol}'. Supported symbols: {config.SYMBOLS}",
         )
     return get_signals_log(symbol=sym, limit=limit)
+
+
+@app.get("/api/settings", dependencies=[Depends(verify_engine_key)])
+async def get_settings_endpoint() -> Dict[str, float]:
+    st = db.get_settings()
+    return {
+        "balance": float(st.get("balance", "10000.0")),
+        "risk_pct": float(st.get("risk_pct", "1.0")),
+        "daily_limit_pct": float(st.get("daily_limit_pct", "3.0")),
+    }
+
+
+@app.put("/api/settings", dependencies=[Depends(verify_engine_key)])
+async def update_settings_endpoint(body: SettingsUpdate) -> Dict[str, float]:
+    if body.balance is not None:
+        db.set_setting("balance", str(body.balance))
+    if body.risk_pct is not None:
+        db.set_setting("risk_pct", str(body.risk_pct))
+    if body.daily_limit_pct is not None:
+        db.set_setting("daily_limit_pct", str(body.daily_limit_pct))
+
+    # Recompute setups across all symbols with new sizing/limits
+    for sym in config.SYMBOLS:
+        sym_state = state.get_symbol(sym)
+        if sym_state:
+            sym_state.recompute_setup()
+
+    st = db.get_settings()
+    return {
+        "balance": float(st.get("balance", "10000.0")),
+        "risk_pct": float(st.get("risk_pct", "1.0")),
+        "daily_limit_pct": float(st.get("daily_limit_pct", "3.0")),
+    }
+
+
+@app.get("/api/journal", dependencies=[Depends(verify_engine_key)])
+async def get_journal_endpoint(
+    limit: int = Query(100, ge=1, le=500),
+) -> List[Dict[str, Any]]:
+    return db.get_journal_trades(limit=limit)
+
+
+@app.post("/api/journal", dependencies=[Depends(verify_engine_key)])
+async def add_journal_endpoint(body: JournalCreate) -> Dict[str, Any]:
+    trade_id = db.add_journal_trade(
+        symbol=body.symbol,
+        side=body.side,
+        entry=body.entry,
+        exit_price=body.exit,
+        sl=body.sl,
+        qty=body.qty,
+        opened_at=body.opened_at,
+        closed_at=body.closed_at,
+        notes=body.notes or "",
+    )
+
+    # Recompute setups (dailyLimitHit may be triggered)
+    for sym in config.SYMBOLS:
+        sym_state = state.get_symbol(sym)
+        if sym_state:
+            sym_state.recompute_setup()
+
+    return {"ok": True, "id": trade_id}
+
+
+@app.delete("/api/journal/{trade_id}", dependencies=[Depends(verify_engine_key)])
+async def delete_journal_endpoint(trade_id: int) -> Dict[str, Any]:
+    deleted = db.delete_journal_trade(trade_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trade not found")
+
+    # Recompute setups (dailyLimitHit may be un-triggered)
+    for sym in config.SYMBOLS:
+        sym_state = state.get_symbol(sym)
+        if sym_state:
+            sym_state.recompute_setup()
+
+    return {"ok": True}
+
+
+@app.get("/api/journal/stats", dependencies=[Depends(verify_engine_key)])
+async def get_journal_stats_endpoint() -> Dict[str, Any]:
+    return db.get_journal_stats()
 
 
 @app.get("/api/stream", dependencies=[Depends(verify_engine_key)])

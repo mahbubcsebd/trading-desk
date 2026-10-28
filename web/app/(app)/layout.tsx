@@ -1,11 +1,20 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
-import { getHealth } from "@/lib/engine";
+import { getHealth, getSettings } from "@/lib/engine";
+import SettingsDialog from "@/components/SettingsDialog";
 
 export const metadata = {
   title: "TradeDesk — Gold & BTC Trading Dashboard",
   description: "Private trading analysis dashboard for Gold (XAUUSDT) and BTC (BTCUSDT)",
 };
+
+async function SettingsWrapper() {
+  let settings = { balance: 10000, risk_pct: 1.0, daily_limit_pct: 3.0 };
+  try {
+    settings = await getSettings();
+  } catch {}
+  return <SettingsDialog initialSettings={settings} />;
+}
 
 async function EngineStatusBadge() {
   try {
@@ -65,6 +74,10 @@ export default function AppLayout({
           <div className="flex items-center space-x-3">
             <Suspense fallback={null}>
               <EngineStatusBadge />
+            </Suspense>
+
+            <Suspense fallback={null}>
+              <SettingsWrapper />
             </Suspense>
 
             <form action="/api/logout" method="POST">
