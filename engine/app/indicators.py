@@ -136,3 +136,8 @@ def compute_indicators(df: pd.DataFrame) -> Dict[str, Any]:
         "donchian_low": donchian_low,
         "vol_sma20": vol_sma20,
     }
+
+
+# Alias for compatibility
+calc_indicators = compute_indicators
+

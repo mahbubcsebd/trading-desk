@@ -59,14 +59,10 @@ def calc_bias(df: pd.DataFrame) -> str:
 
     close = df["close"]
     ema50_series = calc_ema(close, 50)
+    ema200_series = calc_ema(close, min(200, len(df)))
+
     ema50 = float(ema50_series.iloc[-1])
-
-    if len(df) >= 200:
-        ema200_series = calc_ema(close, 200)
-        ema200 = float(ema200_series.iloc[-1])
-    else:
-        ema200 = ema50
-
+    ema200 = float(ema200_series.iloc[-1])
     cur_close = float(close.iloc[-1])
 
     if ema50 > ema200 and cur_close > ema50:

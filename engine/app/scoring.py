@@ -55,7 +55,9 @@ def get_backtest_strategy_info(symbol: str, db_path: Optional[str] = None) -> Di
             "SELECT strategy, enabled, metrics_json FROM backtests WHERE symbol = ?",
             (symbol,),
         )
+        found_rows = 0
         for row in cursor.fetchall():
+            found_rows += 1
             strat = row["strategy"]
             enabled = bool(row["enabled"])
             pf = 0.0
@@ -66,6 +68,7 @@ def get_backtest_strategy_info(symbol: str, db_path: Optional[str] = None) -> Di
             except Exception:
                 pass
             result[strat] = {"enabled": enabled, "profit_factor": pf}
+        result["_has_run"] = (found_rows > 0)
         return result
     finally:
         conn.close()
@@ -236,7 +239,10 @@ def evaluate_best_setup(
     scored_candidates = []
 
     # Check backtest status
-    has_any_backtest = any(b.get("profit_factor", 0.0) > 0 for b in backtest_info.values())
+    has_any_backtest = backtest_info.get(
+        "_has_run",
+        any(b.get("profit_factor", 0.0) > 0 for b in backtest_info.values() if isinstance(b, dict))
+    )
 
     for strat_id in ["trend", "reversion", "sweep"]:
         b_info = backtest_info.get(strat_id, {"enabled": False, "profit_factor": 0.0})

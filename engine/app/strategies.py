@@ -26,6 +26,18 @@ def calc_net_rr(entry: float, sl: float, tp: float) -> float:
     return round((reward - cost) / denom, 2)
 
 
+def extract_candle_ts(df: pd.DataFrame) -> int:
+    if "ts" not in df or len(df) == 0:
+        return 0
+    val = df["ts"].iloc[-1]
+    if hasattr(val, "timestamp"):
+        return int(val.timestamp() * 1000)
+    try:
+        return int(val)
+    except Exception:
+        return 0
+
+
 def check_trend_strategy(
     df: pd.DataFrame,
     indicators: Dict[str, Any],
@@ -50,7 +62,7 @@ def check_trend_strategy(
         return None
 
     close = float(df["close"].iloc[-1])
-    candle_ts = int(df["ts"].iloc[-1]) if "ts" in df else 0
+    candle_ts = extract_candle_ts(df)
 
     donchian_high = indicators.get("donchian_high")
     donchian_low = indicators.get("donchian_low")
@@ -131,7 +143,7 @@ def check_reversion_strategy(
 
     close = float(df["close"].iloc[-1])
     close_prev = float(df["close"].iloc[-2])
-    candle_ts = int(df["ts"].iloc[-1]) if "ts" in df else 0
+    candle_ts = extract_candle_ts(df)
 
     bb_upper = indicators.get("bb_upper")
     bb_mid = indicators.get("bb_mid")
@@ -219,7 +231,7 @@ def check_sweep_strategy(
     cur_low = float(df["low"].iloc[-1])
     cur_close = float(df["close"].iloc[-1])
     cur_vol = float(df["volume"].iloc[-1])
-    candle_ts = int(df["ts"].iloc[-1]) if "ts" in df else 0
+    candle_ts = extract_candle_ts(df)
 
     bar_range = cur_high - cur_low
     if bar_range <= 0:

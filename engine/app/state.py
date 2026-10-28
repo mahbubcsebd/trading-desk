@@ -1,8 +1,11 @@
+import logging
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 import pandas as pd
 from app import config
+
+logger = logging.getLogger("state")
 
 
 @dataclass
@@ -52,8 +55,9 @@ class SymbolState:
             ctx = calc_market_context(df_1h, df_4h)
             self.regime = ctx["regime"]
             self.bias = ctx["bias"]
-        except Exception:
-            pass
+            self.recompute_setup()
+        except Exception as e:
+            logger.error("Error in recompute_context for %s: %s", self.symbol, e, exc_info=True)
 
     def recompute_setup(self) -> None:
         """Evaluates strategies and scoring on 15m candle close."""
@@ -144,10 +148,10 @@ class SymbolState:
                             strategy=setup["strategy"],
                         )
                     )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logger.error("Error sending telegram alert: %s", e)
+        except Exception as e:
+            logger.error("Error in recompute_setup for %s: %s", self.symbol, e, exc_info=True)
 
     def set_candles(self, tf: str, candle_list: List[List[float]]) -> None:
         """Set history bars, keeping at most HISTORY_BARS[tf]."""

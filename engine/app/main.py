@@ -56,6 +56,11 @@ async def lifespan(app: FastAPI):
                 except Exception as e:
                     logger.error(f"Failed to load historical candles for {symbol} ({tf}): {e}")
 
+            # Recompute context & setup with all timeframes populated
+            sym_state.recompute_context()
+            sym_state.recompute_setup()
+            logger.info(f"Initialized context and setup for {symbol}")
+
         # Start live WebSocket client
         await ws_client.start()
         logger.info("Bybit WebSocket client started.")

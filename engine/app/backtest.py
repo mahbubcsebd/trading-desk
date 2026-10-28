@@ -301,8 +301,8 @@ def run_backtest_for_symbol(symbol: str, target_bars: int = 4000) -> List[Dict[s
     """
     db.init_db()
     candles_15m = db.get_candles(symbol, "15m", limit=target_bars)
-    candles_1h = db.get_candles(symbol, "1h", limit=target_bars // 4)
-    candles_4h = db.get_candles(symbol, "4h", limit=target_bars // 16)
+    candles_1h = db.get_candles(symbol, "1h", limit=1000)
+    candles_4h = db.get_candles(symbol, "4h", limit=1000)
 
     if len(candles_15m) < 200:
         logger.warning(f"Not enough candles for {symbol} ({len(candles_15m)}). Please backfill first.")
