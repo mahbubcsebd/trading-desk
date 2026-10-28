@@ -58,7 +58,7 @@ class SymbolState:
     def is_fresh(self) -> bool:
         if self.last_msg_ts <= 0:
             return False
-        return (time.time() - self.last_msg_ts) <= 10.0
+        return (time.time() - self.last_msg_ts) <= 45.0
 
     def update_live_price(self, price: float) -> None:
         """Updates live price across all active timeframes so candle moves dynamically tick-by-tick."""
@@ -191,6 +191,7 @@ class SymbolState:
             self.candles[tf] = list(candle_list)
         if self.candles[tf] and tf == config.ENTRY_TF:
             self.price = float(self.candles[tf][-1][4])
+            self.last_msg_ts = time.time()
         if tf in ("1h", "4h"):
             self.recompute_context()
         if tf == config.ENTRY_TF:

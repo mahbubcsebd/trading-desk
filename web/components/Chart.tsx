@@ -491,7 +491,7 @@ export default function Chart({
               title="Lightweight Charts with local orderbook liquidity depth walls"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-              <span>Bybit Quant Walls</span>
+              <span>Quant Depth Walls</span>
             </button>
           </div>
 

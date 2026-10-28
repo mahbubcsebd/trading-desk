@@ -79,13 +79,13 @@ YF_INTERVAL_MAP = {
 
 # How many calendar days of history to request per timeframe
 YF_PERIOD_MAP = {
-    "1m":  "7d",
-    "5m":  "60d",
+    "1m":  "5d",
+    "5m":  "30d",
     "15m": "60d",
     "30m": "60d",
-    "1h":  "730d",
-    "4h":  "730d",
-    "1D":  "max",
+    "1h":  "60d",
+    "4h":  "60d",
+    "1D":  "2y",
 }
 
 # Exness XAU/USD instrument rules (MT5 contract spec)

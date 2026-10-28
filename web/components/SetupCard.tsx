@@ -95,7 +95,7 @@ export default function SetupCard({
                 ${price > 0 ? price.toFixed(2) : "0.00"}
               </span>
               <span className="text-[10px] text-zinc-500 font-mono block">
-                Bybit Perp (Basis ~$8.65 vs Spot)
+                Exness Spot Feed
               </span>
             </div>
           </div>
