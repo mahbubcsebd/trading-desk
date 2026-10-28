@@ -10,8 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getBacktest, getSignals, type BacktestResult } from "@/lib/engine";
+import { connection } from "next/server";
 
 async function BacktestData() {
+  await connection();
   let btcResults: BacktestResult[] = [];
   let xauResults: BacktestResult[] = [];
   let signalsData: Awaited<ReturnType<typeof getSignals>> = {

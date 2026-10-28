@@ -1,8 +1,10 @@
 import React, { Suspense } from "react";
 import { getJournal, getJournalStats, type JournalTrade, type JournalStats } from "@/lib/engine";
+import { connection } from "next/server";
 import JournalClient from "@/components/JournalClient";
 
 async function JournalData() {
+  await connection();
   let trades: JournalTrade[] = [];
   let stats: JournalStats = {
     trades: 0,

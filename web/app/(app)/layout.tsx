@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
 import { getHealth, getSettings } from "@/lib/engine";
+import { connection } from "next/server";
 import SettingsDialog from "@/components/SettingsDialog";
 
 export const metadata = {
@@ -9,6 +10,7 @@ export const metadata = {
 };
 
 async function SettingsWrapper() {
+  await connection();
   let settings = { balance: 10000, risk_pct: 1.0, daily_limit_pct: 3.0 };
   try {
     settings = await getSettings();
@@ -17,6 +19,7 @@ async function SettingsWrapper() {
 }
 
 async function EngineStatusBadge() {
+  await connection();
   try {
     const health = await getHealth();
     if (health.ok) return null;

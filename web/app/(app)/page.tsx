@@ -2,8 +2,10 @@ import React, { Suspense } from "react";
 import DashboardView from "@/components/DashboardView";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSnapshot, getCandles, type SnapshotData } from "@/lib/engine";
+import { connection } from "next/server";
 
 async function DashboardDataLoader() {
+  await connection();
   const initialSymbol = "XAUUSDT";
   let snapshot: SnapshotData;
   let candles: Array<[number, number, number, number, number, number]> = [];

@@ -53,15 +53,17 @@ export default function SettingsDialog({ initialSettings }: SettingsDialogProps)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 px-2.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 flex items-center space-x-1.5"
-        >
-          <SettingsIcon className="w-4 h-4" />
-          <span className="text-xs hidden sm:inline">Settings</span>
-        </Button>
+      <DialogTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 flex items-center space-x-1.5"
+          />
+        }
+      >
+        <SettingsIcon className="w-4 h-4" />
+        <span className="text-xs hidden sm:inline">Settings</span>
       </DialogTrigger>
       <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-100 sm:max-w-md">
         <DialogHeader>
