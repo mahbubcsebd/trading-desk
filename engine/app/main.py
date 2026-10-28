@@ -139,6 +139,55 @@ async def get_snapshot_endpoint(
     return state.get_snapshot(sym, tf=tf)
 
 
+@app.get("/api/backtest", dependencies=[Depends(verify_engine_key)])
+async def get_backtest_endpoint(
+    symbol: str = Query(..., description="Symbol, e.g. BTCUSDT, XAUUSDT"),
+) -> List[Dict[str, Any]]:
+    sym = symbol.upper()
+    if sym not in config.SYMBOLS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid symbol '{symbol}'. Supported symbols: {config.SYMBOLS}",
+        )
+
+    conn = db.get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT strategy, run_at, enabled, metrics_json FROM backtests WHERE symbol = ?",
+            (sym,),
+        )
+        rows = cursor.fetchall()
+        if not rows:
+            return [
+                {
+                    "strategy": strat,
+                    "symbol": sym,
+                    "enabled": False,
+                    "run_at": 0,
+                    "in_sample": {"trades": 0, "win_rate": 0.0, "avg_r": 0.0, "expectancy": 0.0, "profit_factor": 0.0, "max_drawdown": 0.0, "total_r": 0.0},
+                    "out_of_sample": {"trades": 0, "win_rate": 0.0, "avg_r": 0.0, "expectancy": 0.0, "profit_factor": 0.0, "max_drawdown": 0.0, "total_r": 0.0},
+                }
+                for strat in ["trend", "reversion", "sweep"]
+            ]
+
+        results = []
+        for r in rows:
+            metrics = json.loads(r["metrics_json"]) if r["metrics_json"] else {}
+            results.append({
+                "strategy": r["strategy"],
+                "symbol": sym,
+                "enabled": bool(r["enabled"]),
+                "run_at": r["run_at"],
+                "in_sample": metrics.get("in_sample", {}),
+                "out_of_sample": metrics.get("out_of_sample", {}),
+            })
+        return results
+    finally:
+        conn.close()
+
+
+
 @app.get("/api/stream", dependencies=[Depends(verify_engine_key)])
 async def stream_endpoint(
     request: Request,

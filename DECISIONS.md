@@ -36,6 +36,16 @@ This log records technical decisions, simplifications, and benchmark measurement
 - Throttled metric calculations to at most once per second for negligible CPU footprint at idle and high tick rates.
 - Verified live WebSocket streaming with 50-level orderbook and real-time taker flow on BTCUSDT and XAUUSDT.
 
-
-
-
+## Phase P5: Strategies & Backtesting
+- Implemented three pure-function strategies in `engine/app/strategies.py`:
+  - `trend`: Donchian 20-bar breakout with EMA fast > slow filter and ADX >= 22.
+  - `reversion`: Bollinger Band mean reversion with RSI(14) oversold (<30) / overbought (>70) confirmation in ranging regimes.
+  - `sweep`: Liquidity sweep beyond 20-bar high/low followed by close reclaim, taker imbalance, and volume expansion >= 1.2x.
+- Built backtest simulation engine (`engine/app/backtest.py`) with zero lookahead:
+  - Strict entry fill on the immediate next bar Open (`i + 1`).
+  - Realistic cost modeling: Fee (0.055% maker/taker) and Slippage (0.02%) applied on both entry and exit.
+  - Conservative stop-loss priority: if a single bar touches both SL and TP, the stop loss is executed first.
+  - 70% In-Sample / 30% Out-of-Sample chronological train/test split.
+  - Dynamic strategy enablement flag: strategy is auto-enabled only if OOS Profit Factor >= 1.1 and OOS Expectancy > 0.
+- Implemented CLI runner (`python -m app.backtest --symbol BTCUSDT --days 60`) saving metrics to SQLite `backtests` table.
+- Exposed `/api/backtest` in FastAPI and integrated full `/backtest` comparison dashboard with limitation notices and live signal log table.

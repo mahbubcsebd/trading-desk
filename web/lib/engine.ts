@@ -98,7 +98,44 @@ export async function getCandles(
   return res.json();
 }
 
+export interface BacktestResult {
+  symbol: string;
+  strategy: string;
+  enabled: boolean;
+  run_at: number;
+  in_sample: {
+    trades: number;
+    win_rate: number;
+    avg_r: number;
+    expectancy: number;
+    profit_factor: number;
+    max_drawdown: number;
+    total_r: number;
+  };
+  out_of_sample: {
+    trades: number;
+    win_rate: number;
+    avg_r: number;
+    expectancy: number;
+    profit_factor: number;
+    max_drawdown: number;
+    total_r: number;
+  };
+}
+
+export async function getBacktest(symbol: string): Promise<BacktestResult[]> {
+  const res = await fetch(`${ENGINE_URL}/api/backtest?symbol=${encodeURIComponent(symbol)}`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    next: { revalidate: 300 },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch backtest for ${symbol}: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export function getEngineStreamUrl(symbol: string, tf: string = "15m"): string {
+
   return `${ENGINE_URL}/api/stream?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`;
 }
 
