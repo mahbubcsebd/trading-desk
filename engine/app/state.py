@@ -21,12 +21,26 @@ class SymbolState:
     price: float = 0.0
     change_24h_pct: float = 0.0
     last_msg_ts: float = 0.0
+    regime: Dict[str, Any] = field(default_factory=lambda: {"state": "ranging", "volatility": "normal", "adx": 0.0})
+    bias: Dict[str, str] = field(default_factory=lambda: {"h4": "neutral", "h1": "neutral"})
 
     @property
     def is_fresh(self) -> bool:
         if self.last_msg_ts <= 0:
             return False
         return (time.time() - self.last_msg_ts) <= 10.0
+
+    def recompute_context(self) -> None:
+        """Recomputes regime and bias based on 1h and 4h dataframes."""
+        try:
+            from app.regime import calc_market_context
+            df_1h = self.get_dataframe("1h")
+            df_4h = self.get_dataframe("4h")
+            ctx = calc_market_context(df_1h, df_4h)
+            self.regime = ctx["regime"]
+            self.bias = ctx["bias"]
+        except Exception:
+            pass
 
     def set_candles(self, tf: str, candle_list: List[List[float]]) -> None:
         """Set history bars, keeping at most HISTORY_BARS[tf]."""
@@ -37,6 +51,8 @@ class SymbolState:
             self.candles[tf] = list(candle_list)
         if self.candles[tf] and tf == config.ENTRY_TF:
             self.price = float(self.candles[tf][-1][4])
+        if tf in ("1h", "4h"):
+            self.recompute_context()
 
     def update_candle(
         self, tf: str, start: int, o: float, h: float, l: float, c: float, v: float, confirm: bool
@@ -59,9 +75,13 @@ class SymbolState:
             if len(candle_list) > max_bars:
                 self.candles[tf] = candle_list[-max_bars:]
 
+        if tf in ("1h", "4h"):
+            self.recompute_context()
+
         if confirm:
             return (self.symbol, tf, start, o, h, l, c, v)
         return None
+
 
     def get_candles(self, tf: str, limit: int = 500) -> List[List[float]]:
         candle_list = self.candles.get(tf, [])
@@ -160,8 +180,9 @@ class AppState:
             "fresh": sym_state.is_fresh,
             "price": price,
             "change24hPct": round(sym_state.change_24h_pct, 2),
-            "regime": {"state": "ranging", "volatility": "normal", "adx": 0.0},
-            "bias": {"h4": "neutral", "h1": "neutral"},
+            "regime": sym_state.regime,
+            "bias": sym_state.bias,
+
             "setup": {
                 "action": "WAIT",
                 "score": 0,

@@ -22,4 +22,12 @@ This log records technical decisions, simplifications, and benchmark measurement
 - Implemented native `EventSource` live hook (`lib/use-live.ts`) and `web/app/api/stream/route.ts` proxy forwarding the client abort signal.
 - Integrated `lightweight-charts` with `series.update()` for real-time live candle updates without full redraws.
 
+## Phase P3: Indicators, Regime, & Bias
+- Implemented vectorised indicators (`indicators.py`) in pure numpy/pandas: EMA, RSI(14), ATR(14), ADX(14), Bollinger Bands(20, 2), Donchian(20), and Volume SMA(20) capped at 500 bars.
+- Implemented 1h regime (`trending` if ADX >= 22 else `ranging`) and rolling 200-bar ATR volatility rank (`low` < 30, `normal` 30-70, `high` > 70).
+- Implemented multi-timeframe trend bias (`bull`, `bear`, `neutral`) on 1h and 4h using EMA50 and EMA200.
+- Automatic context recomputation integrated on 1h/4h candle updates in `SymbolState`.
+- 18 pytest tests passing with hand-verified calculation fixtures.
+
+
 
