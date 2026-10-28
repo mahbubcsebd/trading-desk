@@ -213,6 +213,117 @@ def score_signal(
     return score, reasons[:5], components
 
 
+def calc_ambient_confluence(
+    bias: Dict[str, str],
+    regime: Dict[str, Any],
+    liquidity: Dict[str, Any],
+    price: float,
+    candle_open: float,
+    backtest_info: Dict[str, Dict[str, Any]],
+) -> Tuple[int, List[Dict[str, Any]], str]:
+    """
+    Computes real-time market alignment score (5-58) when no strategy technical trigger is active.
+    Fluctuates dynamically with live orderbook imbalance, taker flow, and multi-timeframe bias.
+    """
+    w = config.WEIGHTS
+    h4 = bias.get("h4", "neutral")
+    h1 = bias.get("h1", "neutral")
+    taker_pct = float(liquidity.get("takerBuyPct", 50.0))
+    imbalance = float(liquidity.get("bookImbalance", 0.0))
+
+    # Determine dominant market lean
+    if h4 == "bull" or (h4 == "neutral" and h1 == "bull"):
+        d = 1
+        lean_label = "Bullish"
+    elif h4 == "bear" or (h4 == "neutral" and h1 == "bear"):
+        d = -1
+        lean_label = "Bearish"
+    else:
+        d = 1 if taker_pct >= 50.0 else -1
+        lean_label = "Bullish (Flow)" if d == 1 else "Bearish (Flow)"
+
+    # 1. Alignment (30%)
+    align = 0.0
+    if d == 1:
+        if h4 == "bull":
+            align += 0.6
+        if h1 == "bull":
+            align += 0.4
+    else:
+        if h4 == "bear":
+            align += 0.6
+        if h1 == "bear":
+            align += 0.4
+    align = min(max(align, 0.0), 1.0)
+
+    # 2. Flow (25%): Imbalance + Taker buy ratio + OI
+    c1 = imbalance * d
+    c2 = ((taker_pct - 50.0) / 50.0) * d
+    c3 = 0.0
+    oi_pct = float(liquidity.get("oiChange15mPct", 0.0))
+    price_change = price - candle_open
+    if oi_pct > 0:
+        if price_change * d > 0:
+            c3 = 1.0
+        elif price_change * d < 0:
+            c3 = -1.0
+    raw_flow = (c1 + c2 + c3) / 3.0
+    flow = min(max((raw_flow + 1.0) / 2.0, 0.0), 1.0)
+
+    # 3. Regime (10%)
+    regime_state = regime.get("state", "ranging")
+    adx = float(regime.get("adx", 0.0))
+    if regime_state == "trending":
+        regime_fit = 1.0 if adx >= config.ADX_TREND else 0.75
+    else:
+        regime_fit = 0.5
+
+    # 4. Edge (25%) from best backtested strategy
+    best_pf = max(
+        [b.get("profit_factor", 0.0) for b in backtest_info.values() if isinstance(b, dict)],
+        default=0.0,
+    )
+    edge = min(max(best_pf - 1.0, 0.0), 1.0)
+
+    # 5. Projected RR (10%)
+    rr_comp = 0.5
+
+    raw_score = 100.0 * (
+        w["align"] * align
+        + w["edge"] * edge
+        + w["flow"] * flow
+        + w["regime"] * regime_fit
+        + w["rr"] * rr_comp
+    )
+    score = int(round(raw_score))
+    # Cap between 5 and 58 so ambient readiness never triggers >= 60 without a candle breakout
+    score = min(max(score, 5), 58)
+
+    reasons: List[Dict[str, Any]] = []
+    align_pts = int(round(100.0 * w["align"] * align))
+    if align >= 0.6:
+        reasons.append({"label": f"4h & 1h {lean_label} trend aligned", "points": align_pts})
+    elif align > 0:
+        reasons.append({"label": f"Partial {lean_label} trend bias", "points": align_pts})
+    else:
+        reasons.append({"label": "Neutral bias (awaiting break)", "points": 0})
+
+    flow_pts = int(round(100.0 * w["flow"] * flow))
+    reasons.append({
+        "label": f"Orderbook & flow ({taker_pct:.1f}% taker buys, {imbalance:+.2f} depth)",
+        "points": flow_pts,
+    })
+
+    regime_pts = int(round(100.0 * w["regime"] * regime_fit))
+    reasons.append({
+        "label": f"Regime: {regime_state} (ADX {adx:.1f})",
+        "points": regime_pts,
+    })
+
+    wait_reason = f"Awaiting strategy trigger (Confluence {score}/100, needs {config.SCORE_MIN})"
+    return score, reasons[:3], wait_reason
+
+
 def evaluate_best_setup(
     symbol: str,
     signals: Dict[str, Optional[StrategySignal]],
@@ -346,9 +457,17 @@ def evaluate_best_setup(
         }, strategies_summary
 
     if not scored_candidates:
+        ambient_score, ambient_reasons, ambient_wait = calc_ambient_confluence(
+            bias=bias,
+            regime=regime,
+            liquidity=liquidity,
+            price=price,
+            candle_open=candle_open,
+            backtest_info=backtest_info,
+        )
         return {
             "action": "WAIT",
-            "score": 0,
+            "score": ambient_score,
             "strategy": None,
             "entry": 0.0,
             "sl": 0.0,
@@ -356,8 +475,8 @@ def evaluate_best_setup(
             "rr": 0.0,
             "qty": 0.0,
             "riskUsd": 0.0,
-            "reasons": [],
-            "waitReason": "No strategy has a valid setup",
+            "reasons": ambient_reasons,
+            "waitReason": ambient_wait,
             "validUntil": 0,
         }, strategies_summary
 

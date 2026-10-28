@@ -327,36 +327,96 @@ class AppState:
         )
 
         setup = sym_state.current_setup
-        if not setup:
-            setup = {
-                "action": "WAIT",
-                "score": 0,
-                "strategy": None,
-                "entry": 0.0,
-                "sl": 0.0,
-                "tp": 0.0,
-                "rr": 0.0,
-                "qty": 0.0,
-                "riskUsd": 0.0,
-                "reasons": [],
-                "waitReason": "Initializing data feed",
-                "validUntil": 0,
-            }
+        if not setup or setup.get("action") == "WAIT":
+            if sym_state.daily_limit_hit:
+                setup = {
+                    "action": "WAIT",
+                    "score": setup.get("score", 0) if setup else 0,
+                    "strategy": None,
+                    "entry": 0.0,
+                    "sl": 0.0,
+                    "tp": 0.0,
+                    "rr": 0.0,
+                    "qty": 0.0,
+                    "riskUsd": 0.0,
+                    "reasons": [],
+                    "waitReason": "Daily loss limit reached",
+                    "validUntil": 0,
+                }
+            elif not sym_state.is_fresh:
+                setup = {
+                    "action": "WAIT",
+                    "score": setup.get("score", 0) if setup else 0,
+                    "strategy": None,
+                    "entry": 0.0,
+                    "sl": 0.0,
+                    "tp": 0.0,
+                    "rr": 0.0,
+                    "qty": 0.0,
+                    "riskUsd": 0.0,
+                    "reasons": [],
+                    "waitReason": "Data is stale",
+                    "validUntil": 0,
+                }
+            elif setup and setup.get("strategy"):
+                setup = dict(setup)
+            else:
+                try:
+                    from app.scoring import calc_ambient_confluence, get_backtest_strategy_info
+                    c_list = sym_state.candles.get(config.ENTRY_TF, [])
+                    c_open = float(c_list[-1][1]) if c_list else price
+                    b_info = get_backtest_strategy_info(sym_state.symbol)
+                    amb_score, amb_reasons, amb_wait = calc_ambient_confluence(
+                        bias=sym_state.bias,
+                        regime=sym_state.regime,
+                        liquidity=liq_metrics,
+                        price=price,
+                        candle_open=c_open,
+                        backtest_info=b_info,
+                    )
+                    setup = {
+                        "action": "WAIT",
+                        "score": amb_score,
+                        "strategy": None,
+                        "entry": 0.0,
+                        "sl": 0.0,
+                        "tp": 0.0,
+                        "rr": 0.0,
+                        "qty": 0.0,
+                        "riskUsd": 0.0,
+                        "reasons": amb_reasons,
+                        "waitReason": amb_wait,
+                        "validUntil": 0,
+                    }
+                except Exception:
+                    setup = dict(setup) if setup else {
+                        "action": "WAIT",
+                        "score": 0,
+                        "strategy": None,
+                        "entry": 0.0,
+                        "sl": 0.0,
+                        "tp": 0.0,
+                        "rr": 0.0,
+                        "qty": 0.0,
+                        "riskUsd": 0.0,
+                        "reasons": [],
+                        "waitReason": "Analyzing market...",
+                        "validUntil": 0,
+                    }
         else:
-            # Check expiration dynamically
+            # Active BUY / SELL setup
             setup = dict(setup)
-            if setup.get("action") in ("BUY", "SELL"):
-                valid_until = setup.get("validUntil", 0)
-                entry = setup.get("entry", 0.0)
-                atr = sym_state.current_atr
-                is_expired = False
-                if valid_until > 0 and now_ms > valid_until:
-                    is_expired = True
-                elif atr > 0 and abs(price - entry) > (0.5 * atr):
-                    is_expired = True
+            valid_until = setup.get("validUntil", 0)
+            entry = setup.get("entry", 0.0)
+            atr = sym_state.current_atr
+            is_expired = False
+            if valid_until > 0 and now_ms > valid_until:
+                is_expired = True
+            elif atr > 0 and abs(price - entry) > (0.5 * atr):
+                is_expired = True
 
-                if is_expired:
-                    setup["expired"] = True
+            if is_expired:
+                setup["expired"] = True
 
         return {
             "symbol": sym,

@@ -56,31 +56,83 @@ export default function SetupCard({
 
   // 2. WAIT State
   if (!setup || setup.action === "WAIT") {
+    const scoreVal = setup?.score ?? 0;
     return (
       <Card className="border-zinc-800 bg-zinc-900/60 shadow-lg backdrop-blur">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">
             Best Setup Now
           </CardTitle>
-          <Badge variant="outline" className="text-[11px] border-zinc-700 text-zinc-400">
-            Score: {setup?.score ?? 0} / 100
+          <Badge
+            variant="outline"
+            className={`text-[11px] font-mono transition-colors ${
+              scoreVal >= 50
+                ? "border-amber-500/50 text-amber-400 bg-amber-500/10"
+                : "border-zinc-700 text-zinc-400 bg-zinc-800/40"
+            }`}
+          >
+            Live Score: {scoreVal} / 100
           </Badge>
         </CardHeader>
-        <CardContent className="space-y-4 pt-2">
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl font-black tracking-tight text-zinc-400">
-              WAIT
-            </span>
-            <span className="text-xs text-zinc-500 font-mono">
-              Market Price: ${price.toLocaleString()}
+        <CardContent className="space-y-3.5 pt-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <span className="text-2xl font-black tracking-tight text-zinc-400">
+                WAIT
+              </span>
+              <span className="text-[11px] text-zinc-400 bg-zinc-800/80 px-2 py-0.5 rounded font-mono">
+                Needs 60 to trade
+              </span>
+            </div>
+            <span className="text-xs text-zinc-400 font-mono">
+              ${price.toLocaleString()}
             </span>
           </div>
 
-          <div className="rounded-md border border-zinc-800/80 bg-zinc-950/60 p-3.5">
+          {/* Progress bar towards trigger threshold */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-[11px] text-zinc-400">
+              <span className="font-medium">Market Confluence</span>
+              <span className="font-mono text-zinc-300">{scoreVal}%</span>
+            </div>
+            <div className="w-full bg-zinc-800/90 h-2 rounded-full overflow-hidden relative">
+              <div
+                className={`h-full transition-all duration-500 rounded-full ${
+                  scoreVal >= 50 ? "bg-amber-500" : "bg-blue-500/80"
+                }`}
+                style={{ width: `${Math.min(100, Math.max(4, scoreVal))}%` }}
+              />
+              {/* 60 threshold marker */}
+              <div
+                className="absolute top-0 bottom-0 w-[2px] bg-red-400/80 z-10"
+                style={{ left: "60%" }}
+                title="Trigger Threshold (60 pts)"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-md border border-zinc-800/80 bg-zinc-950/60 p-3">
             <p className="text-xs text-zinc-300 font-medium">
-              {setup?.waitReason || "No strategy has a valid setup right now."}
+              {setup?.waitReason || "Analyzing real-time market order flow and multi-timeframe bias..."}
             </p>
           </div>
+
+          {/* Live confluence factors breakdown if present */}
+          {setup?.reasons && setup.reasons.length > 0 && (
+            <div className="space-y-1.5 pt-0.5 border-t border-zinc-800/60">
+              <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                Live Factor Alignment
+              </span>
+              <ul className="space-y-1 text-xs text-zinc-300">
+                {setup.reasons.slice(0, 3).map((r, i) => (
+                  <li key={i} className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-300">• {r.label}</span>
+                    <span className="font-mono text-zinc-400">+{r.points}pts</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
