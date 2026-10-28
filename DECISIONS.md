@@ -84,3 +84,16 @@ This log records technical decisions, simplifications, and benchmark measurement
   - **In-Memory Snapshot Generation Latency:** ~0.001 ms (~695,000 ops/sec).
   - **Test Suite:** 32 unit & integration tests passing across all components.
   - **Web Production Bundle:** `npm run build` passes with zero errors, zero warnings.
+
+## Phase P9: Optional Telegram Alert
+- Built `engine/app/alerts.py` sending formatted Telegram notifications when a new `BUY` or `SELL` setup is produced.
+- Alerts are conditionally triggered only when `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are configured in `.env`.
+- Message format contains Symbol, Side, Entry, Stop Loss, Take Profit, and Score points.
+
+## Post-Build Bug Fixes & Refinements
+- **Base UI DialogTrigger Button Nesting:** Replaced `asChild` with `render={<Button ... />}` to eliminate nested `<button>` hydration warnings.
+- **Font Configuration:** Corrected circular Tailwind CSS `--font-sans` definition in `globals.css` to map to `var(--font-inter)` and injected `inter.className` into `layout.tsx`.
+- **Next.js 16 Partial Prerender:** Added `await connection()` from `next/server` across dynamic SSR pages to conform with Next.js 16 Cache Components.
+- **Engine Startup Setup Initialization:** Added startup trigger `recompute_context()` and `recompute_setup()` after historical candles are fetched in lifespan to avoid `WAIT Initializing data feed` on launch.
+- **Timestamp Handling:** Replaced strict `int(df["ts"].iloc[-1])` with `extract_candle_ts()` across all 3 strategies in `strategies.py` to seamlessly handle pandas `Timestamp` objects.
+- **Bias EMA Calculation:** Fixed `calc_bias` in `regime.py` to compute `calc_ema(close, min(200, len(df)))` so that bias doesn't lock to neutral when history is under 200 bars.
