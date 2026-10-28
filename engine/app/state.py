@@ -23,6 +23,12 @@ class SymbolState:
     last_msg_ts: float = 0.0
     regime: Dict[str, Any] = field(default_factory=lambda: {"state": "ranging", "volatility": "normal", "adx": 0.0})
     bias: Dict[str, str] = field(default_factory=lambda: {"h4": "neutral", "h1": "neutral"})
+    liquidity_tracker: Optional[Any] = None
+
+    def __post_init__(self):
+        from app.liquidity import SymbolLiquidityTracker
+        self.liquidity_tracker = SymbolLiquidityTracker(symbol=self.symbol)
+
 
     @property
     def is_fresh(self) -> bool:
@@ -174,6 +180,20 @@ class AppState:
             candle_obj = {"tf": tf, "t": now_ms, "o": 0.0, "h": 0.0, "l": 0.0, "c": 0.0, "v": 0.0}
             price = sym_state.price
 
+        liq_metrics = (
+            sym_state.liquidity_tracker.get_metrics(price)
+            if sym_state.liquidity_tracker
+            else {
+                "bookImbalance": 0.0,
+                "buyWall": None,
+                "sellWall": None,
+                "takerBuyPct": 50.0,
+                "oiChange15mPct": 0.0,
+                "funding": 0.0,
+                "liq5m": {"longUsd": 0.0, "shortUsd": 0.0},
+            }
+        )
+
         return {
             "symbol": sym,
             "ts": now_ms,
@@ -182,7 +202,6 @@ class AppState:
             "change24hPct": round(sym_state.change_24h_pct, 2),
             "regime": sym_state.regime,
             "bias": sym_state.bias,
-
             "setup": {
                 "action": "WAIT",
                 "score": 0,
@@ -197,15 +216,8 @@ class AppState:
                 "waitReason": "Initializing data feed",
                 "validUntil": 0,
             },
-            "liquidity": {
-                "bookImbalance": 0.0,
-                "buyWall": None,
-                "sellWall": None,
-                "takerBuyPct": 50.0,
-                "oiChange15mPct": 0.0,
-                "funding": 0.0,
-                "liq5m": {"longUsd": 0.0, "shortUsd": 0.0},
-            },
+            "liquidity": liq_metrics,
+
             "strategies": [
                 {"id": "trend", "state": "idle", "enabled": False},
                 {"id": "reversion", "state": "idle", "enabled": False},

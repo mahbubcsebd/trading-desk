@@ -29,5 +29,13 @@ This log records technical decisions, simplifications, and benchmark measurement
 - Automatic context recomputation integrated on 1h/4h candle updates in `SymbolState`.
 - 18 pytest tests passing with hand-verified calculation fixtures.
 
+## Phase P4: Liquidity Layer
+- Built local `OrderBook` tracking Bybit `orderbook.50.<symbol>` snapshots and deltas, pruning zero-size levels to avoid dictionary bloat.
+- Implemented `bookImbalance` over ±0.25% price range, and dynamic `buyWall` / `sellWall` detection within ±0.50% range.
+- Implemented rolling 5-minute trade deque for `takerBuyPct`, 15-minute `oiChange15mPct`, current funding, and 5-minute liquidation volume tracking (`longUsd` / `shortUsd`).
+- Throttled metric calculations to at most once per second for negligible CPU footprint at idle and high tick rates.
+- Verified live WebSocket streaming with 50-level orderbook and real-time taker flow on BTCUSDT and XAUUSDT.
+
+
 
 

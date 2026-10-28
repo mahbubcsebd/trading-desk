@@ -79,10 +79,14 @@ class BybitWsClient:
         topics = []
         for symbol in config.SYMBOLS:
             topics.append(f"tickers.{symbol}")
+            topics.append(f"orderbook.50.{symbol}")
+            topics.append(f"publicTrade.{symbol}")
+            topics.append(f"allLiquidation.{symbol}")
             for tf in config.CHART_TFS:
                 interval = config.TF_TO_BYBIT_INTERVAL[tf]
                 topics.append(f"kline.{interval}.{symbol}")
         return topics
+
 
     async def start(self) -> None:
         self._running = True
@@ -154,6 +158,12 @@ class BybitWsClient:
                     self._handle_kline(topic, msg.get("data", []))
                 elif topic.startswith("tickers."):
                     self._handle_ticker(topic, msg.get("data", {}))
+                elif topic.startswith("orderbook."):
+                    self._handle_orderbook(topic, msg.get("type", ""), msg.get("data", {}))
+                elif topic.startswith("publicTrade."):
+                    self._handle_public_trade(topic, msg.get("data", []))
+                elif topic.startswith("allLiquidation."):
+                    self._handle_liquidation(topic, msg.get("data", []))
             except Exception as e:
                 logger.error(f"Error handling Bybit WS message: {e}", exc_info=True)
 
@@ -203,3 +213,76 @@ class BybitWsClient:
                 sym_state.change_24h_pct = float(data["price24hPcnt"]) * 100.0
             except (ValueError, TypeError):
                 pass
+        if "fundingRate" in data and data["fundingRate"] is not None and sym_state.liquidity_tracker:
+            try:
+                sym_state.liquidity_tracker.update_funding(float(data["fundingRate"]))
+            except (ValueError, TypeError):
+                pass
+        if "openInterest" in data and data["openInterest"] is not None and sym_state.liquidity_tracker:
+            try:
+                sym_state.liquidity_tracker.update_oi(int(time.time() * 1000), float(data["openInterest"]))
+            except (ValueError, TypeError):
+                pass
+
+    def _handle_orderbook(self, topic: str, msg_type: str, data: Dict[str, Any]) -> None:
+        # Topic format: orderbook.50.<symbol>
+        parts = topic.split(".")
+        if len(parts) != 3:
+            return
+        symbol = parts[2]
+        sym_state = state.get_symbol(symbol)
+        if not sym_state or not sym_state.liquidity_tracker:
+            return
+
+        sym_state.last_msg_ts = time.time()
+        bids = data.get("b", [])
+        asks = data.get("a", [])
+
+        if msg_type == "snapshot":
+            sym_state.liquidity_tracker.orderbook.apply_snapshot(bids, asks)
+        elif msg_type == "delta":
+            sym_state.liquidity_tracker.orderbook.apply_delta(bids, asks)
+
+    def _handle_public_trade(self, topic: str, data: List[Dict[str, Any]]) -> None:
+        # Topic format: publicTrade.<symbol>
+        parts = topic.split(".")
+        if len(parts) != 2:
+            return
+        symbol = parts[1]
+        sym_state = state.get_symbol(symbol)
+        if not sym_state or not sym_state.liquidity_tracker:
+            return
+
+        sym_state.last_msg_ts = time.time()
+        for item in data:
+            try:
+                ts = int(item.get("T", time.time() * 1000))
+                side = item.get("S", "Buy")
+                p = float(item.get("p", 0.0))
+                v = float(item.get("v", 0.0))
+                sym_state.liquidity_tracker.add_trade(ts, side, p, v)
+            except (ValueError, TypeError):
+                continue
+
+    def _handle_liquidation(self, topic: str, data: Any) -> None:
+        # Topic format: allLiquidation.<symbol>
+        parts = topic.split(".")
+        if len(parts) != 2:
+            return
+        symbol = parts[1]
+        sym_state = state.get_symbol(symbol)
+        if not sym_state or not sym_state.liquidity_tracker:
+            return
+
+        sym_state.last_msg_ts = time.time()
+        items = data if isinstance(data, list) else [data]
+        for item in items:
+            try:
+                ts = int(item.get("updatedTime", time.time() * 1000))
+                side = item.get("side", "")
+                p = float(item.get("price", 0.0))
+                v = float(item.get("size", 0.0))
+                sym_state.liquidity_tracker.add_liquidation(ts, side, p, v)
+            except (ValueError, TypeError):
+                continue
+
