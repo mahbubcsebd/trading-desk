@@ -207,7 +207,10 @@ class BybitWsClient:
 
         sym_state.last_msg_ts = time.time()
         if "lastPrice" in data and data["lastPrice"]:
-            sym_state.price = float(data["lastPrice"])
+            try:
+                sym_state.update_live_price(float(data["lastPrice"]))
+            except (ValueError, TypeError):
+                pass
         if "price24hPcnt" in data and data["price24hPcnt"]:
             try:
                 sym_state.change_24h_pct = float(data["price24hPcnt"]) * 100.0
@@ -260,6 +263,8 @@ class BybitWsClient:
                 side = item.get("S", "Buy")
                 p = float(item.get("p", 0.0))
                 v = float(item.get("v", 0.0))
+                if p > 0:
+                    sym_state.update_live_price(p)
                 sym_state.liquidity_tracker.add_trade(ts, side, p, v)
             except (ValueError, TypeError):
                 continue

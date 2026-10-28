@@ -46,6 +46,21 @@ class SymbolState:
             return False
         return (time.time() - self.last_msg_ts) <= 10.0
 
+    def update_live_price(self, price: float) -> None:
+        """Updates live price across all active timeframes so candle moves dynamically tick-by-tick."""
+        if price <= 0:
+            return
+        self.last_msg_ts = time.time()
+        self.price = price
+        for tf, candle_list in self.candles.items():
+            if candle_list:
+                bar = candle_list[-1]
+                bar[4] = price
+                if price > bar[2]:
+                    bar[2] = price
+                if price < bar[3]:
+                    bar[3] = price
+
     def recompute_context(self) -> None:
         """Recomputes regime and bias based on 1h and 4h dataframes."""
         try:
@@ -280,18 +295,21 @@ class AppState:
         candle_list = sym_state.candles.get(tf, [])
         if candle_list:
             last = candle_list[-1]
+            c_price = sym_state.price if sym_state.price > 0 else float(last[4])
+            h_price = max(float(last[2]), c_price)
+            l_price = min(float(last[3]), c_price)
             candle_obj = {
                 "tf": tf,
                 "t": int(last[0]),
                 "o": float(last[1]),
-                "h": float(last[2]),
-                "l": float(last[3]),
-                "c": float(last[4]),
+                "h": h_price,
+                "l": l_price,
+                "c": c_price,
                 "v": float(last[5]),
             }
-            price = sym_state.price if sym_state.price > 0 else float(last[4])
+            price = c_price
         else:
-            candle_obj = {"tf": tf, "t": now_ms, "o": 0.0, "h": 0.0, "l": 0.0, "c": 0.0, "v": 0.0}
+            candle_obj = {"tf": tf, "t": now_ms, "o": sym_state.price, "h": sym_state.price, "l": sym_state.price, "c": sym_state.price, "v": 0.0}
             price = sym_state.price
 
         liq_metrics = (

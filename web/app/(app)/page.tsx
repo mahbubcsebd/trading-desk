@@ -76,18 +76,21 @@ function DashboardSkeleton() {
         <Skeleton className="h-8 w-48 bg-zinc-900" />
         <Skeleton className="h-5 w-28 bg-zinc-900" />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4">
+      {/* 1. Full-Width Chart Skeleton */}
+      <Skeleton className="h-[520px] lg:h-[580px] w-full rounded-xl bg-zinc-900" />
+
+      {/* 2. Setup Card & Context Deck Below */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-5 w-full">
           <Skeleton className="h-[300px] w-full rounded-xl bg-zinc-900" />
         </div>
-        <div className="lg:col-span-8">
-          <Skeleton className="h-[460px] w-full rounded-xl bg-zinc-900" />
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Skeleton className="h-36 w-full rounded-xl bg-zinc-900" />
+            <Skeleton className="h-36 w-full rounded-xl bg-zinc-900" />
+          </div>
+          <Skeleton className="h-36 w-full rounded-xl bg-zinc-900" />
         </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Skeleton className="h-36 w-full rounded-xl bg-zinc-900" />
-        <Skeleton className="h-36 w-full rounded-xl bg-zinc-900" />
-        <Skeleton className="h-36 w-full rounded-xl bg-zinc-900" />
       </div>
     </div>
   );

@@ -117,10 +117,23 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* Main Grid: Left 1/3 SetupCard, Right 2/3 Chart */}
+      {/* 1. Full-Width TradingView / Exness Chart */}
+      <div className="w-full h-[520px] lg:h-[580px]">
+        <Chart
+          symbol={symbol}
+          activeTf={activeTf}
+          onTfChange={setActiveTf}
+          candles={candles}
+          liveCandle={currentSnapshot.candle}
+          setup={currentSnapshot.setup}
+          liquidity={currentSnapshot.liquidity}
+        />
+      </div>
+
+      {/* 2. Setup Card & Analysis Deck Below Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left 1/3 (4 columns on lg) */}
-        <div className="lg:col-span-4 w-full">
+        {/* Best Setup Now Card (Dominant left 5 cols) */}
+        <div className="lg:col-span-5 w-full">
           <SetupCard
             setup={currentSnapshot.setup}
             symbol={symbol}
@@ -129,28 +142,17 @@ export default function DashboardView({
           />
         </div>
 
-        {/* Right 2/3 (8 columns on lg) */}
-        <div className="lg:col-span-8 w-full min-h-[460px]">
-          <Chart
-            symbol={symbol}
-            activeTf={activeTf}
-            onTfChange={setActiveTf}
-            candles={candles}
-            liveCandle={currentSnapshot.candle}
-            setup={currentSnapshot.setup}
-            liquidity={currentSnapshot.liquidity}
-          />
+        {/* Supporting Context & Strategy Panels (7 cols) */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <ContextPanel
+              regime={currentSnapshot.regime}
+              bias={currentSnapshot.bias}
+            />
+            <StrategiesPanel strategies={currentSnapshot.strategies} />
+          </div>
+          <LiquidityPanel liquidity={currentSnapshot.liquidity} />
         </div>
-      </div>
-
-      {/* Three Compact Panels Below */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-        <ContextPanel
-          regime={currentSnapshot.regime}
-          bias={currentSnapshot.bias}
-        />
-        <LiquidityPanel liquidity={currentSnapshot.liquidity} />
-        <StrategiesPanel strategies={currentSnapshot.strategies} />
       </div>
     </div>
   );

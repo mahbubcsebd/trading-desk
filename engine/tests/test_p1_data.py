@@ -116,7 +116,7 @@ def test_candles_api(client):
 
     # Invalid tf
     res = client.get(
-        "/api/candles?symbol=BTCUSDT&tf=30m",
+        "/api/candles?symbol=BTCUSDT&tf=99m",
         headers={"X-Engine-Key": config.ENGINE_KEY},
     )
     assert res.status_code == 400
