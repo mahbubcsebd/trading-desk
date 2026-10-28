@@ -13,6 +13,7 @@ import {
   ISeriesApi,
 } from "lightweight-charts";
 import { Button } from "@/components/ui/button";
+import { Maximize2, Minimize2 } from "lucide-react";
 import type { SnapshotData } from "@/lib/engine";
 import TradingViewChart from "./TradingViewChart";
 
@@ -38,11 +39,30 @@ export default function Chart({
   liquidity,
 }: ChartProps) {
   const [chartMode, setChartMode] = useState<"exness" | "quant">("exness");
+  const chartWrapperRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const priceLinesRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!chartWrapperRef.current) return;
+    if (!document.fullscreenElement) {
+      chartWrapperRef.current.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
 
   // Legend State (OHLCV)
   const [legendData, setLegendData] = useState<{
@@ -398,9 +418,16 @@ export default function Chart({
   const changeColor = isUp ? "text-[#089981]" : "text-[#F23645]";
 
   return (
-    <div className="flex flex-col h-full w-full rounded-xl border border-zinc-800 bg-[#0B0E14] overflow-hidden shadow-2xl">
-      {/* Top Toolbar: Timeframes & Mode Switcher */}
-      <div className="flex flex-wrap items-center justify-between border-b border-zinc-800/80 px-4 py-2.5 bg-[#12161F]/90 gap-2">
+    <div
+      ref={chartWrapperRef}
+      className={`bg-[#0B0E14] overflow-hidden transition-all ${
+        isFullscreen
+          ? "fixed inset-0 z-50 h-screen w-screen rounded-none border-none flex flex-col"
+          : "flex flex-col h-full w-full rounded-xl border border-zinc-800 shadow-2xl"
+      }`}
+    >
+      {/* Top Toolbar: Timeframes, Mode Switcher & Full Display */}
+      <div className="flex flex-wrap items-center justify-between border-b border-zinc-800/80 px-4 py-2.5 bg-[#12161F]/90 gap-2 select-none">
         {/* Left: Timeframe Buttons */}
         <div className="flex items-center space-x-1">
           {ALL_TIMEFRAMES.map((tf) => (
@@ -420,7 +447,7 @@ export default function Chart({
           ))}
         </div>
 
-        {/* Center/Right: Feed Mode Switcher */}
+        {/* Center/Right: Feed Mode Switcher & Actions */}
         <div className="flex items-center space-x-2">
           <div className="flex items-center bg-zinc-950/80 p-0.5 rounded-lg border border-zinc-800/80">
             <button
@@ -462,6 +489,27 @@ export default function Chart({
               Reset View
             </Button>
           )}
+
+          {/* Full Display Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleFullscreen}
+            className="h-7 px-2.5 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800/60 rounded flex items-center space-x-1 border border-zinc-800/80 bg-zinc-900/60"
+            title={isFullscreen ? "Exit Fullscreen (Esc)" : "Full Display Screen"}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                <span className="text-[11px] font-medium">Exit Full</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5 mr-1 text-zinc-400" />
+                <span className="text-[11px] font-medium">Full Display</span>
+              </>
+            )}
+          </Button>
         </div>
       </div>
 

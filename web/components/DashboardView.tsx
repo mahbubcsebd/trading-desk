@@ -66,6 +66,32 @@ export default function DashboardView({
   const currentSnapshot = snapshot || initialSnapshot;
   const isFresh = connected && currentSnapshot.fresh;
 
+  // Instant browser audio sound alert on new BUY / SELL setups
+  const prevActionRef = React.useRef<string>("WAIT");
+  useEffect(() => {
+    const curAction = currentSnapshot.setup?.action || "WAIT";
+    if (prevActionRef.current === "WAIT" && (curAction === "BUY" || curAction === "SELL")) {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+          osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12); // A5
+          gain.gain.setValueAtTime(0.25, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.55);
+        }
+      } catch {}
+    }
+    prevActionRef.current = curAction;
+  }, [currentSnapshot.setup?.action]);
+
   return (
     <div className="space-y-6">
       {/* Top Bar Controls: Asset Switch & Live Indicator */}
