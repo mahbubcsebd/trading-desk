@@ -1,0 +1,157 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useLive } from "@/lib/use-live";
+import SetupCard from "./SetupCard";
+import Chart from "./Chart";
+import ContextPanel from "./ContextPanel";
+import LiquidityPanel from "./LiquidityPanel";
+import StrategiesPanel from "./StrategiesPanel";
+import { Button } from "@/components/ui/button";
+import type { SnapshotData } from "@/lib/engine";
+
+interface DashboardViewProps {
+  initialSymbol: string;
+  initialSnapshot: SnapshotData;
+  initialCandles: Array<[number, number, number, number, number, number]>;
+}
+
+export default function DashboardView({
+  initialSymbol,
+  initialSnapshot,
+  initialCandles,
+}: DashboardViewProps) {
+  const [symbol, setSymbol] = useState(initialSymbol);
+  const [activeTf, setActiveTf] = useState("15m");
+  const [candles, setCandles] = useState(initialCandles);
+
+  // Consume live SSE stream
+  const { snapshot, connected, lastUpdate } = useLive({
+    symbol,
+    tf: activeTf,
+    initialSnapshot,
+  });
+
+  // Calculate "updated Xs ago"
+  const [secondsAgo, setSecondsAgo] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastUpdate) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastUpdate]);
+
+  // When symbol or tf changes, fetch initial candles
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCandles() {
+      try {
+        const res = await fetch(`/api/candles?symbol=${symbol}&tf=${activeTf}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) {
+          setCandles(data);
+        }
+      } catch (err) {
+        console.error("Failed to load candles:", err);
+      }
+    }
+
+    loadCandles();
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, activeTf]);
+
+  const currentSnapshot = snapshot || initialSnapshot;
+  const isFresh = connected && currentSnapshot.fresh;
+
+  return (
+    <div className="space-y-6">
+      {/* Top Bar Controls: Asset Switch & Live Indicator */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-800/60">
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSymbol("XAUUSDT")}
+            className={`h-8 px-4 font-semibold text-xs rounded transition-colors ${
+              symbol === "XAUUSDT"
+                ? "bg-zinc-100 text-zinc-900 shadow"
+                : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+            }`}
+          >
+            Gold (XAUUSDT)
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSymbol("BTCUSDT")}
+            className={`h-8 px-4 font-semibold text-xs rounded transition-colors ${
+              symbol === "BTCUSDT"
+                ? "bg-zinc-100 text-zinc-900 shadow"
+                : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+            }`}
+          >
+            Bitcoin (BTCUSDT)
+          </Button>
+        </div>
+
+        {/* Live dot & freshness */}
+        <div className="flex items-center space-x-3 text-xs">
+          <div className="flex items-center space-x-1.5 font-medium">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isFresh
+                  ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
+                  : "bg-red-500 animate-pulse"
+              }`}
+            />
+            <span className={isFresh ? "text-zinc-300" : "text-red-400"}>
+              {isFresh ? "Live Feed" : "Offline"}
+            </span>
+          </div>
+          <span className="text-zinc-600 font-mono text-[11px]">
+            updated {secondsAgo}s ago
+          </span>
+        </div>
+      </div>
+
+      {/* Main Grid: Left 1/3 SetupCard, Right 2/3 Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left 1/3 (4 columns on lg) */}
+        <div className="lg:col-span-4 w-full">
+          <SetupCard
+            setup={currentSnapshot.setup}
+            symbol={symbol}
+            price={currentSnapshot.price}
+            dailyLimitHit={currentSnapshot.dailyLimitHit}
+          />
+        </div>
+
+        {/* Right 2/3 (8 columns on lg) */}
+        <div className="lg:col-span-8 w-full min-h-[460px]">
+          <Chart
+            symbol={symbol}
+            activeTf={activeTf}
+            onTfChange={setActiveTf}
+            candles={candles}
+            liveCandle={currentSnapshot.candle}
+            setup={currentSnapshot.setup}
+            liquidity={currentSnapshot.liquidity}
+          />
+        </div>
+      </div>
+
+      {/* Three Compact Panels Below */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+        <ContextPanel
+          regime={currentSnapshot.regime}
+          bias={currentSnapshot.bias}
+        />
+        <LiquidityPanel liquidity={currentSnapshot.liquidity} />
+        <StrategiesPanel strategies={currentSnapshot.strategies} />
+      </div>
+    </div>
+  );
+}

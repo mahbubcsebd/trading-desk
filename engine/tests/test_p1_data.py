@@ -120,3 +120,19 @@ def test_candles_api(client):
         headers={"X-Engine-Key": config.ENGINE_KEY},
     )
     assert res.status_code == 400
+
+
+def test_snapshot_api(client):
+    res = client.get(
+        "/api/snapshot?symbol=BTCUSDT&tf=15m",
+        headers={"X-Engine-Key": config.ENGINE_KEY},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["symbol"] == "BTCUSDT"
+    assert "candle" in data
+    assert "regime" in data
+    assert "bias" in data
+    assert "setup" in data
+    assert "liquidity" in data
+

@@ -91,6 +91,110 @@ class AppState:
         s = self.get_symbol(symbol)
         return s.is_fresh if s else False
 
+    def get_snapshot(self, symbol: str, tf: str = "15m") -> Dict[str, Any]:
+        sym = symbol.upper()
+        sym_state = self.get_symbol(sym)
+        now_ms = int(time.time() * 1000)
+
+        if not sym_state:
+            return {
+                "symbol": sym,
+                "ts": now_ms,
+                "fresh": False,
+                "price": 0.0,
+                "change24hPct": 0.0,
+                "regime": {"state": "ranging", "volatility": "normal", "adx": 0.0},
+                "bias": {"h4": "neutral", "h1": "neutral"},
+                "setup": {
+                    "action": "WAIT",
+                    "score": 0,
+                    "strategy": None,
+                    "entry": 0.0,
+                    "sl": 0.0,
+                    "tp": 0.0,
+                    "rr": 0.0,
+                    "qty": 0.0,
+                    "riskUsd": 0.0,
+                    "reasons": [],
+                    "waitReason": "Unknown symbol",
+                    "validUntil": 0,
+                },
+                "liquidity": {
+                    "bookImbalance": 0.0,
+                    "buyWall": None,
+                    "sellWall": None,
+                    "takerBuyPct": 50.0,
+                    "oiChange15mPct": 0.0,
+                    "funding": 0.0,
+                    "liq5m": {"longUsd": 0.0, "shortUsd": 0.0},
+                },
+                "strategies": [
+                    {"id": "trend", "state": "idle", "enabled": False},
+                    {"id": "reversion", "state": "idle", "enabled": False},
+                    {"id": "sweep", "state": "idle", "enabled": False},
+                ],
+                "candle": {"tf": tf, "t": now_ms, "o": 0.0, "h": 0.0, "l": 0.0, "c": 0.0, "v": 0.0},
+                "dailyLimitHit": False,
+            }
+
+        candle_list = sym_state.candles.get(tf, [])
+        if candle_list:
+            last = candle_list[-1]
+            candle_obj = {
+                "tf": tf,
+                "t": int(last[0]),
+                "o": float(last[1]),
+                "h": float(last[2]),
+                "l": float(last[3]),
+                "c": float(last[4]),
+                "v": float(last[5]),
+            }
+            price = sym_state.price if sym_state.price > 0 else float(last[4])
+        else:
+            candle_obj = {"tf": tf, "t": now_ms, "o": 0.0, "h": 0.0, "l": 0.0, "c": 0.0, "v": 0.0}
+            price = sym_state.price
+
+        return {
+            "symbol": sym,
+            "ts": now_ms,
+            "fresh": sym_state.is_fresh,
+            "price": price,
+            "change24hPct": round(sym_state.change_24h_pct, 2),
+            "regime": {"state": "ranging", "volatility": "normal", "adx": 0.0},
+            "bias": {"h4": "neutral", "h1": "neutral"},
+            "setup": {
+                "action": "WAIT",
+                "score": 0,
+                "strategy": None,
+                "entry": 0.0,
+                "sl": 0.0,
+                "tp": 0.0,
+                "rr": 0.0,
+                "qty": 0.0,
+                "riskUsd": 0.0,
+                "reasons": [],
+                "waitReason": "Initializing data feed",
+                "validUntil": 0,
+            },
+            "liquidity": {
+                "bookImbalance": 0.0,
+                "buyWall": None,
+                "sellWall": None,
+                "takerBuyPct": 50.0,
+                "oiChange15mPct": 0.0,
+                "funding": 0.0,
+                "liq5m": {"longUsd": 0.0, "shortUsd": 0.0},
+            },
+            "strategies": [
+                {"id": "trend", "state": "idle", "enabled": False},
+                {"id": "reversion", "state": "idle", "enabled": False},
+                {"id": "sweep", "state": "idle", "enabled": False},
+            ],
+            "candle": candle_obj,
+            "dailyLimitHit": False,
+        }
+
+
 
 # Global singleton in-memory state
 state = AppState()
