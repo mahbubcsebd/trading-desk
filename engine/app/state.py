@@ -130,6 +130,22 @@ class SymbolState:
                     score=setup["score"],
                     created_at=candle_ts,
                 )
+                try:
+                    import asyncio
+                    from app.alerts import send_telegram_alert
+                    asyncio.create_task(
+                        send_telegram_alert(
+                            symbol=self.symbol,
+                            side=setup["action"],
+                            entry=setup["entry"],
+                            sl=setup["sl"],
+                            tp=setup["tp"],
+                            score=setup["score"],
+                            strategy=setup["strategy"],
+                        )
+                    )
+                except Exception:
+                    pass
         except Exception:
             pass
 
