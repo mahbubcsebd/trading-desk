@@ -14,6 +14,7 @@ import {
 } from "lightweight-charts";
 import { Button } from "@/components/ui/button";
 import type { SnapshotData } from "@/lib/engine";
+import TradingViewChart from "./TradingViewChart";
 
 interface ChartProps {
   symbol: string;
@@ -36,6 +37,7 @@ export default function Chart({
   setup,
   liquidity,
 }: ChartProps) {
+  const [chartMode, setChartMode] = useState<"exness" | "quant">("exness");
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -253,10 +255,10 @@ export default function Chart({
       });
     }
 
-    // TradingView style focus: Show the last 85 bars with 14 bars offset, not crammed fitContent
+    // TradingView / Exness style focus: Show the last 45 bars for closer candle perspective
     if (chartRef.current && sortedCandles.length > 0) {
-      const fromIdx = Math.max(0, sortedCandles.length - 85);
-      const toIdx = sortedCandles.length + 12;
+      const fromIdx = Math.max(0, sortedCandles.length - 45);
+      const toIdx = sortedCandles.length + 8;
       chartRef.current.timeScale().setVisibleLogicalRange({ from: fromIdx, to: toIdx });
     }
   }, [candles, symbol, activeTf]);
@@ -386,8 +388,8 @@ export default function Chart({
 
   const handleResetZoom = () => {
     if (chartRef.current && candles.length > 0) {
-      const fromIdx = Math.max(0, candles.length - 85);
-      const toIdx = candles.length + 12;
+      const fromIdx = Math.max(0, candles.length - 45);
+      const toIdx = candles.length + 8;
       chartRef.current.timeScale().setVisibleLogicalRange({ from: fromIdx, to: toIdx });
     }
   };
@@ -397,9 +399,9 @@ export default function Chart({
 
   return (
     <div className="flex flex-col h-full w-full rounded-xl border border-zinc-800 bg-[#0B0E14] overflow-hidden shadow-2xl">
-      {/* Top Toolbar: Timeframes & Header */}
+      {/* Top Toolbar: Timeframes & Mode Switcher */}
       <div className="flex flex-wrap items-center justify-between border-b border-zinc-800/80 px-4 py-2.5 bg-[#12161F]/90 gap-2">
-        {/* Timeframe Buttons */}
+        {/* Left: Timeframe Buttons */}
         <div className="flex items-center space-x-1">
           {ALL_TIMEFRAMES.map((tf) => (
             <Button
@@ -418,56 +420,93 @@ export default function Chart({
           ))}
         </div>
 
-        {/* Action Controls & Watermark Info */}
-        <div className="flex items-center space-x-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResetZoom}
-            className="h-6 px-2 text-[11px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 rounded font-medium"
-            title="Reset to latest candles"
-          >
-            Reset View
-          </Button>
-          <div className="text-[11px] text-zinc-500 font-mono tracking-tight hidden sm:block">
-            Bybit Linear Perpetual • {symbol}
+        {/* Center/Right: Feed Mode Switcher */}
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center bg-zinc-950/80 p-0.5 rounded-lg border border-zinc-800/80">
+            <button
+              type="button"
+              onClick={() => setChartMode("exness")}
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center space-x-1.5 ${
+                chartMode === "exness"
+                  ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+              title="Official TradingView Spot Gold/BTC feed matching Exness & OANDA"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span>Exness / OANDA Live</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartMode("quant")}
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center space-x-1.5 ${
+                chartMode === "quant"
+                  ? "bg-blue-500/15 text-blue-300 border border-blue-500/30 shadow-sm"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+              title="Lightweight Charts with local orderbook liquidity depth walls"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              <span>Bybit Quant Walls</span>
+            </button>
           </div>
+
+          {chartMode === "quant" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetZoom}
+              className="h-7 px-2 text-[11px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 rounded font-medium"
+              title="Reset to latest candles"
+            >
+              Reset View
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* TradingView / Exness Style Legend Overlay */}
-      {legendData && (
-        <div className="px-4 py-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono bg-[#0B0E14]/95 border-b border-zinc-900/60 select-none z-10">
-          <span className="font-semibold text-zinc-200">
-            {symbol} <span className="text-zinc-500 text-[11px] font-normal">({activeTf})</span>
-          </span>
-          <span className="text-zinc-400">
-            O: <span className="text-zinc-200">{legendData.open.toFixed(2)}</span>
-          </span>
-          <span className="text-zinc-400">
-            H: <span className="text-zinc-200">{legendData.high.toFixed(2)}</span>
-          </span>
-          <span className="text-zinc-400">
-            L: <span className="text-zinc-200">{legendData.low.toFixed(2)}</span>
-          </span>
-          <span className="text-zinc-400">
-            C: <span className="text-zinc-200">{legendData.close.toFixed(2)}</span>
-          </span>
-          <span className={changeColor}>
-            {isUp ? "+" : ""}
-            {legendData.change.toFixed(2)} ({isUp ? "+" : ""}
-            {legendData.changePct.toFixed(2)}%)
-          </span>
-          {legendData.volume > 0 && (
-            <span className="text-zinc-500 text-[11px]">
-              Vol: {legendData.volume > 1000 ? `${(legendData.volume / 1000).toFixed(1)}K` : legendData.volume.toFixed(1)}
-            </span>
+      {/* Main Chart Area */}
+      {chartMode === "exness" ? (
+        <div className="relative flex-1 min-h-[460px] w-full">
+          <TradingViewChart symbol={symbol} activeTf={activeTf} />
+        </div>
+      ) : (
+        <div className="flex flex-col flex-1 w-full overflow-hidden">
+          {/* TradingView / Exness Style Legend Overlay for Quant Mode */}
+          {legendData && (
+            <div className="px-4 py-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono bg-[#0B0E14]/95 border-b border-zinc-900/60 select-none z-10">
+              <span className="font-semibold text-zinc-200">
+                {symbol} <span className="text-zinc-500 text-[11px] font-normal">({activeTf})</span>
+              </span>
+              <span className="text-zinc-400">
+                O: <span className="text-zinc-200">{legendData.open.toFixed(2)}</span>
+              </span>
+              <span className="text-zinc-400">
+                H: <span className="text-zinc-200">{legendData.high.toFixed(2)}</span>
+              </span>
+              <span className="text-zinc-400">
+                L: <span className="text-zinc-200">{legendData.low.toFixed(2)}</span>
+              </span>
+              <span className="text-zinc-400">
+                C: <span className="text-zinc-200">{legendData.close.toFixed(2)}</span>
+              </span>
+              <span className={changeColor}>
+                {isUp ? "+" : ""}
+                {legendData.change.toFixed(2)} ({isUp ? "+" : ""}
+                {legendData.changePct.toFixed(2)}%)
+              </span>
+              {legendData.volume > 0 && (
+                <span className="text-zinc-500 text-[11px]">
+                  Vol: {legendData.volume > 1000 ? `${(legendData.volume / 1000).toFixed(1)}K` : legendData.volume.toFixed(1)}
+                </span>
+              )}
+            </div>
           )}
+
+          {/* Chart Canvas */}
+          <div className="relative flex-1 min-h-[440px] w-full" ref={containerRef} />
         </div>
       )}
-
-      {/* Chart Canvas */}
-      <div className="relative flex-1 min-h-[460px] w-full" ref={containerRef} />
     </div>
   );
 }
