@@ -16,7 +16,7 @@ elif engine_env.exists():
 # Data source: Yahoo Finance (ticker "GC=F" for Gold Futures, close matches
 #              Exness & TradingView spot XAU/USD within a few cents)
 # ---------------------------------------------------------------------------
-SYMBOLS = ["XAUUSD"]          # Primary: Gold  |  add "BTCUSD" later if needed
+SYMBOLS = ["XAUUSD", "BTCUSD"]
 ENTRY_TF = "15m"
 BIAS_TFS = ["1h", "4h"]
 CHART_TFS = ["1m", "5m", "15m", "30m", "1h", "4h", "1D"]

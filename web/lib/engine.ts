@@ -133,7 +133,7 @@ export interface BacktestResult {
 export async function getBacktest(symbol: string): Promise<BacktestResult[]> {
   const res = await fetch(`${ENGINE_URL}/api/backtest?symbol=${encodeURIComponent(symbol)}`, {
     headers: { "X-Engine-Key": ENGINE_KEY },
-    next: { revalidate: 300 },
+    cache: "no-store",
   });
   if (!res.ok) {
     throw new Error(`Failed to fetch backtest for ${symbol}: ${res.statusText}`);
