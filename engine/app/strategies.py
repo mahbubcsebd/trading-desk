@@ -55,9 +55,6 @@ def check_trend_strategy(
         close below lowest low of previous 20 bars.
         Stop: entry + 2*ATR; Target: entry - 2*(stop - entry)
     """
-    if regime.get("state") != "trending":
-        return None
-
     if len(df) < 25:
         return None
 
@@ -253,8 +250,8 @@ def check_sweep_strategy(
     if cur_atr <= 0 or v_sma <= 0:
         return None
 
-    # Volume filter
-    if cur_vol < 1.2 * v_sma:
+    # Volume filter (adjusted for OTC forex tick volume)
+    if v_sma > 0 and cur_vol < 0.85 * v_sma:
         return None
 
     h4_bias = bias.get("h4", "neutral")

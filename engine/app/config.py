@@ -42,10 +42,13 @@ BACKFILL_BARS = {"15m": 30000}
 TAKER_FEE  = 0.00035   # ~$3.5/lot commission as fraction of notional
 SLIPPAGE   = 0.00005   # ~0.05 USD on a ~2700 gold price ≈ <0.002%
 
-SCORE_MIN          = 60
-RR_MIN             = 1.5
+SCORE_MIN          = 55        # Optimized for Exness XAU/USD live breakouts
+RR_MIN             = 1.5       # Minimum 1:1.5 Risk-to-Reward
 SIGNAL_EXPIRY_BARS = 32
-WEIGHTS = {"align": 0.30, "edge": 0.25, "flow": 0.25, "regime": 0.10, "rr": 0.10}
+
+# Multi-timeframe price-action weights for Exness Forex / Spot Gold:
+# 40% Trend alignment (4h + 1h), 30% Strategy breakout edge, 15% Regime/ADX, 15% R:R
+WEIGHTS = {"align": 0.40, "edge": 0.30, "regime": 0.15, "rr": 0.15}
 ADX_TREND = 22
 
 # ---------------------------------------------------------------------------

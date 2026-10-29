@@ -107,68 +107,30 @@ def score_signal(
             align += 0.4
     align = min(max(align, 0.0), 1.0)
 
-    # 2. Edge: clamp(profit_factor - 1, 0, 1)
-    edge = min(max(oos_profit_factor - 1.0, 0.0), 1.0)
-
-    # 3. Flow: 4 components in [-1, 1], mapped to [0, 1]
-    # c1: bookImbalance * d
-    book_imb = float(liquidity.get("bookImbalance", 0.0))
-    c1 = min(max(book_imb * d, -1.0), 1.0)
-
-    # c2: ((takerBuyPct - 50) / 50) * d
-    taker_pct = float(liquidity.get("takerBuyPct", 50.0))
-    c2 = min(max(((taker_pct - 50.0) / 50.0) * d, -1.0), 1.0)
-
-    # c3: OI confirmation
-    # OI rising with price moving in d = +1, OI rising with price against d = -1, else 0
-    oi_change = float(liquidity.get("oiChange15mPct", 0.0))
-    price_change = price - candle_open
-    c3 = 0.0
-    if oi_change > 0:
-        if price_change * d > 0:
-            c3 = 1.0
-        elif price_change * d < 0:
-            c3 = -1.0
-
-    # c4: wall block
-    # an opposing wall between entry and target = -1, else 0
-    c4 = 0.0
-    buy_wall = liquidity.get("buyWall")
-    sell_wall = liquidity.get("sellWall")
-    if d == 1:
-        # Long trade: opposing wall is sell wall
-        if sell_wall and isinstance(sell_wall, dict) and "price" in sell_wall:
-            wall_price = float(sell_wall["price"])
-            if signal.entry < wall_price <= signal.tp:
-                c4 = -1.0
+    # 2. Edge: Valid strategy breakout / price action confirmation
+    # Confirmed signal gets base 0.80 edge, boosted up to 1.0 with positive profit factor
+    if oos_profit_factor >= 1.0:
+        edge = min(max(0.80 + (oos_profit_factor - 1.0) * 0.20, 0.80), 1.0)
     else:
-        # Short trade: opposing wall is buy wall
-        if buy_wall and isinstance(buy_wall, dict) and "price" in buy_wall:
-            wall_price = float(buy_wall["price"])
-            if signal.tp <= wall_price < signal.entry:
-                c4 = -1.0
+        edge = 0.80
 
-    raw_flow = (c1 + c2 + c3 + c4) / 4.0
-    flow = min(max((raw_flow + 1.0) / 2.0, 0.0), 1.0)
-
-    # 4. Regime: 1 if strategy fits regime, else 0
+    # 3. Regime: 1.0 if strategy fits regime, else 0.70
     regime_state = regime.get("state", "ranging")
     if signal.strategy_id == "trend":
-        regime_fit = 1.0 if regime_state == "trending" else 0.0
+        regime_fit = 1.0 if regime_state == "trending" else 0.70
     elif signal.strategy_id == "reversion":
-        regime_fit = 1.0 if regime_state == "ranging" else 0.0
+        regime_fit = 1.0 if regime_state == "ranging" else 0.60
     elif signal.strategy_id == "sweep":
         regime_fit = 1.0
     else:
-        regime_fit = 0.0
+        regime_fit = 0.60
 
-    # 5. R:R: min(rr_net / 3, 1)
+    # 4. R:R: min(rr_net / 3.0, 1.0)
     rr_comp = min(max(signal.rr_net / 3.0, 0.0), 1.0)
 
     raw_score = 100.0 * (
         w["align"] * align
         + w["edge"] * edge
-        + w["flow"] * flow
         + w["regime"] * regime_fit
         + w["rr"] * rr_comp
     )
@@ -176,28 +138,19 @@ def score_signal(
     score = min(max(score, 0), 100)
 
     reasons: List[Dict[str, Any]] = []
-    # Up to 5 concise reasons with point contributions
     align_pts = int(round(100.0 * w["align"] * align))
     if align >= 0.6:
-        reasons.append({"label": "4h and 1h trend aligned", "points": align_pts})
+        reasons.append({"label": f"4h & 1h trend aligned ({'Bullish' if d == 1 else 'Bearish'})", "points": align_pts})
     elif align > 0:
         reasons.append({"label": "Partial trend alignment", "points": align_pts})
     else:
         reasons.append({"label": "Counter-trend / Neutral bias", "points": 0})
 
     edge_pts = int(round(100.0 * w["edge"] * edge))
-    if edge > 0:
-        reasons.append({"label": f"Backtested edge (PF {oos_profit_factor:.2f})", "points": edge_pts})
-
-    flow_pts = int(round(100.0 * w["flow"] * flow))
-    if flow >= 0.5:
-        reasons.append({"label": "Order book & taker flow support", "points": flow_pts})
-    else:
-        reasons.append({"label": "Flow / wall resistance", "points": flow_pts})
+    reasons.append({"label": f"{signal.strategy_id.capitalize()} breakout confirmed", "points": edge_pts})
 
     regime_pts = int(round(100.0 * w["regime"] * regime_fit))
-    if regime_fit > 0:
-        reasons.append({"label": f"Matches {regime_state} regime", "points": regime_pts})
+    reasons.append({"label": f"Matches {regime_state} regime", "points": regime_pts})
 
     rr_pts = int(round(100.0 * w["rr"] * rr_comp))
     reasons.append({"label": f"Net R:R {signal.rr_net:.2f} edge", "points": rr_pts})
@@ -205,12 +158,11 @@ def score_signal(
     components = {
         "align": align,
         "edge": edge,
-        "flow": flow,
         "regime": regime_fit,
         "rr": rr_comp,
     }
 
-    return score, reasons[:5], components
+    return score, reasons[:4], components
 
 
 def calc_ambient_confluence(
@@ -242,7 +194,7 @@ def calc_ambient_confluence(
         d = 1 if taker_pct >= 50.0 else -1
         lean_label = "Bullish (Flow)" if d == 1 else "Bearish (Flow)"
 
-    # 1. Alignment (30%)
+    # 1. Alignment (40%)
     align = 0.0
     if d == 1:
         if h4 == "bull":
@@ -256,48 +208,29 @@ def calc_ambient_confluence(
             align += 0.4
     align = min(max(align, 0.0), 1.0)
 
-    # 2. Flow (25%): Imbalance + Taker buy ratio + OI
-    c1 = imbalance * d
-    c2 = ((taker_pct - 50.0) / 50.0) * d
-    c3 = 0.0
-    oi_pct = float(liquidity.get("oiChange15mPct", 0.0))
-    price_change = price - candle_open
-    if oi_pct > 0:
-        if price_change * d > 0:
-            c3 = 1.0
-        elif price_change * d < 0:
-            c3 = -1.0
-    raw_flow = (c1 + c2 + c3) / 3.0
-    flow = min(max((raw_flow + 1.0) / 2.0, 0.0), 1.0)
+    # 2. Edge (30%): Ambient readiness / price action setup
+    edge = 0.35
 
-    # 3. Regime (10%)
+    # 3. Regime & ADX (15%)
     regime_state = regime.get("state", "ranging")
     adx = float(regime.get("adx", 0.0))
     if regime_state == "trending":
         regime_fit = 1.0 if adx >= config.ADX_TREND else 0.75
     else:
-        regime_fit = 0.5
+        regime_fit = 0.50
 
-    # 4. Edge (25%) from best backtested strategy
-    best_pf = max(
-        [b.get("profit_factor", 0.0) for b in backtest_info.values() if isinstance(b, dict)],
-        default=0.0,
-    )
-    edge = min(max(best_pf - 1.0, 0.0), 1.0)
-
-    # 5. Projected RR (10%)
-    rr_comp = 0.5
+    # 4. Projected RR (15%)
+    rr_comp = 0.60
 
     raw_score = 100.0 * (
         w["align"] * align
         + w["edge"] * edge
-        + w["flow"] * flow
         + w["regime"] * regime_fit
         + w["rr"] * rr_comp
     )
     score = round(raw_score, 1)
-    # Cap between 5 and 58 so ambient readiness never triggers >= 60 without a candle breakout
-    score = min(max(score, 5.0), 58.0)
+    # Ambient readiness reflects pre-breakout market state (capped at 50 so WAIT remains until trigger)
+    score = min(max(score, 5.0), 50.0)
 
     reasons: List[Dict[str, Any]] = []
     align_pts = int(round(100.0 * w["align"] * align))
@@ -308,11 +241,8 @@ def calc_ambient_confluence(
     else:
         reasons.append({"label": "Neutral bias (awaiting break)", "points": 0})
 
-    flow_pts = int(round(100.0 * w["flow"] * flow))
-    reasons.append({
-        "label": f"Orderbook & flow ({taker_pct:.1f}% taker buys, {imbalance:+.2f} depth)",
-        "points": flow_pts,
-    })
+    edge_pts = int(round(100.0 * w["edge"] * edge))
+    reasons.append({"label": "Price Action preparation", "points": edge_pts})
 
     regime_pts = int(round(100.0 * w["regime"] * regime_fit))
     reasons.append({

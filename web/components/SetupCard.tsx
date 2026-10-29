@@ -87,7 +87,7 @@ export default function SetupCard({
                 WAIT
               </span>
               <span className="text-[11px] text-zinc-400 bg-zinc-800/80 px-2 py-0.5 rounded font-mono">
-                Needs 60 to trade
+                Needs 55 to trade
               </span>
             </div>
             <div className="text-right">
@@ -115,11 +115,11 @@ export default function SetupCard({
                 }`}
                 style={{ width: `${Math.min(100, Math.max(4, scoreVal))}%` }}
               />
-              {/* 60 threshold marker */}
+              {/* 55 threshold marker */}
               <div
                 className="absolute top-0 bottom-0 w-[2px] bg-red-400/80 z-10"
-                style={{ left: "60%" }}
-                title="Trigger Threshold (60 pts)"
+                style={{ left: "55%" }}
+                title="Trigger Threshold (55 pts)"
               />
             </div>
           </div>
