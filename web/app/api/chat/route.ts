@@ -131,43 +131,52 @@ YOUR BEHAVIOR & RULES:
     parts: [{ text: message }],
   });
 
-  // 7. Call Gemini API
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // 7. Call Gemini API (with resilient model fallback)
+  const candidateModels = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest"];
+  let replyText = "";
+  let lastErrorStatus = 0;
+  let lastErrorMessage = "";
 
-  try {
-    const geminiRes = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents,
-        systemInstruction: {
-          parts: [{ text: systemContext }],
-        },
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 1200,
-        },
-      }),
-    });
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error("Gemini API Error:", geminiRes.status, errText);
-      return NextResponse.json({
-        reply: `⚠️ Google Gemini API Error (${geminiRes.status}): আপনার API Key সঠিক কি না নিশ্চিত করুন। Settings থেকে নতুন API Key বসিয়ে আবার চেষ্টা করতে পারেন।`,
+  for (const model of candidateModels) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    try {
+      const geminiRes = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: {
+            parts: [{ text: systemContext }],
+          },
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1200,
+          },
+        }),
       });
+
+      if (geminiRes.ok) {
+        const data = await geminiRes.json();
+        replyText =
+          data.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "দুঃখিত, কোনো উত্তর পাওয়া যায়নি। দয়া করে আবার প্রশ্ন করুন।";
+        break;
+      } else {
+        lastErrorStatus = geminiRes.status;
+        lastErrorMessage = await geminiRes.text();
+        console.warn(`Gemini model ${model} failed with ${geminiRes.status}, trying next fallback...`);
+      }
+    } catch (err: any) {
+      console.warn(`Gemini model ${model} network error:`, err?.message);
     }
-
-    const data = await geminiRes.json();
-    const replyText =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "দুঃখিত, কোনো উত্তর পাওয়া যায়নি। দয়া করে আবার প্রশ্ন করুন।";
-
-    return NextResponse.json({ reply: replyText });
-  } catch (error: any) {
-    console.error("Gemini network error:", error);
-    return NextResponse.json({
-      reply: `⚠️ কানেকশন সমস্যা: ${error?.message || "Gemini সার্ভারে সংযোগ করা যায়নি"}।`,
-    });
   }
+
+  if (replyText) {
+    return NextResponse.json({ reply: replyText });
+  }
+
+  return NextResponse.json({
+    reply: `⚠️ Google Gemini API Error (${lastErrorStatus}): আপনার API Key সঠিক কি না নিশ্চিত করুন। Settings থেকে নতুন API Key বসিয়ে আবার চেষ্টা করতে পারেন।`,
+  });
 }
+

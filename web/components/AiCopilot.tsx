@@ -268,3 +268,4 @@ export default function AiCopilot({ symbol }: AiCopilotProps) {
     </>
   );
 }
+
