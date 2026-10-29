@@ -32,8 +32,10 @@ var/
 sdist/
 develop-eggs/
 .installed.cfg
-lib/
-lib64/
+# Python packaging / build
+# (ensure web/lib is never ignored)
+!web/lib/
+!web/lib/**
 wheels/
 
 # Testing
