@@ -3,7 +3,7 @@ name = "engine"
 version = "0.1.0"
 description = "TradeDesk engine backend — Exness XAU/USD edition"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.162.0",
     "httpx>=0.28.1",

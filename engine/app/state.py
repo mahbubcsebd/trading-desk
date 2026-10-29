@@ -477,6 +477,20 @@ class AppState:
                     "tp": round(tp - basis, 2) if tp > 0 else 0.0,
                 }
 
+        # Compute real-time ICT / SMC Market Analysis
+        smc_analysis = None
+        try:
+            from app.smc import compute_full_smc_analysis
+            df_15m = sym_state.get_dataframe("15m")
+            smc_analysis = compute_full_smc_analysis(
+                symbol=sym,
+                df_15m=df_15m,
+                current_price=spot_price if spot_price > 0 else price,
+                atr=sym_state.current_atr,
+            )
+        except Exception as e:
+            logger.error("Error computing SMC analysis: %s", e)
+
         return {
             "symbol": sym,
             "ts": now_ms,
@@ -493,6 +507,7 @@ class AppState:
             "strategies": sym_state.strategies_summary,
             "candle": candle_obj,
             "dailyLimitHit": sym_state.daily_limit_hit,
+            "smc": smc_analysis,
         }
 
 

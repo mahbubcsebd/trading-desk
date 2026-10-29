@@ -7,6 +7,7 @@ import Chart from "./Chart";
 import ContextPanel from "./ContextPanel";
 import LiquidityPanel from "./LiquidityPanel";
 import StrategiesPanel from "./StrategiesPanel";
+import SmcAnalysisDeck from "./smc/SmcAnalysisDeck";
 import { Button } from "@/components/ui/button";
 import type { SnapshotData } from "@/lib/engine";
 
@@ -181,6 +182,13 @@ export default function DashboardView({
           <LiquidityPanel liquidity={currentSnapshot.liquidity} />
         </div>
       </div>
+
+      {/* 3. Full Institutional ICT / SMC Real Market Analysis Deck */}
+      <SmcAnalysisDeck
+        smc={currentSnapshot.smc}
+        symbol={symbol}
+        price={currentSnapshot.price}
+      />
     </div>
   );
 }

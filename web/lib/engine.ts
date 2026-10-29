@@ -3,6 +3,88 @@ import "server-only";
 const ENGINE_URL = process.env.ENGINE_URL || "http://127.0.0.1:8000";
 const ENGINE_KEY = process.env.ENGINE_KEY || "change-me-long-random";
 
+export interface SmcStructure {
+  trend: "BULLISH" | "BEARISH" | "NEUTRAL";
+  bos: {
+    type: "none" | "bullish" | "bearish";
+    level: number;
+    broken: boolean;
+    status: string;
+  };
+  choch: {
+    type: "none" | "bullish" | "bearish";
+    level: number;
+    active: boolean;
+    status: string;
+  };
+  swingHigh: number;
+  swingLow: number;
+  prevSwingHigh: number;
+  prevSwingLow: number;
+  structureDetail: string;
+}
+
+export interface SmcOrderBlocks {
+  bullishOB: { top: number; bottom: number; status: string; label: string };
+  bearishOB: { top: number; bottom: number; status: string; label: string };
+  nearestBullishFVG: { top: number; bottom: number; mid: number; size: number; mitigated: boolean; label: string } | null;
+  nearestBearishFVG: { top: number; bottom: number; mid: number; size: number; mitigated: boolean; label: string } | null;
+  activeFVGCount: number;
+  totalFVGCount: number;
+}
+
+export interface SmcLiquidity {
+  bsl: { level: number; distance: number; label: string };
+  ssl: { level: number; distance: number; label: string };
+  sweep: { detected: boolean; type: string; desc: string };
+  internalTarget: string;
+}
+
+export interface SmcPdArray {
+  rangeHigh: number;
+  rangeLow: number;
+  equilibrium: number;
+  currentPercent: number;
+  zone: "DISCOUNT" | "PREMIUM" | "EQUILIBRIUM";
+  bias: string;
+  actionHint: string;
+  oteLong: { top: number; bottom: number };
+  oteShort: { top: number; bottom: number };
+}
+
+export interface SmcKillzone {
+  sessionName: string;
+  isKillzone: boolean;
+  phase: string;
+  detail: string;
+  timeString: string;
+  utcTime: string;
+  nyTime: string;
+}
+
+export interface SmcRisk {
+  balance: number;
+  riskPct: number;
+  riskUsd: number;
+  slPoints: number;
+  lotSize: number;
+  longSetup: { entry: number; sl: number; tp1: number; tp2: number; rr1: number; rr2: number };
+  shortSetup: { entry: number; sl: number; tp1: number; tp2: number; rr1: number; rr2: number };
+  checklist: Array<{ name: string; passed: boolean; weight: number }>;
+  confluenceScore: number;
+}
+
+export interface SmcAnalysisData {
+  symbol: string;
+  price: number;
+  structure: SmcStructure;
+  orderBlocks: SmcOrderBlocks;
+  liquidity: SmcLiquidity;
+  pdArray: SmcPdArray;
+  killzone: SmcKillzone;
+  risk: SmcRisk;
+}
+
 export interface SnapshotData {
   symbol: string;
   ts: number;
@@ -63,6 +145,7 @@ export interface SnapshotData {
     v: number;
   };
   dailyLimitHit: boolean;
+  smc?: SmcAnalysisData;
 }
 
 export async function getHealth(): Promise<{ ok: boolean; feed: Record<string, string> }> {
