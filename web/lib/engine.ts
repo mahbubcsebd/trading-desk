@@ -258,6 +258,18 @@ export async function getBacktest(symbol: string): Promise<BacktestResult[]> {
   return res.json();
 }
 
+export async function triggerBacktest(symbol: string): Promise<BacktestResult[]> {
+  const res = await fetch(`${ENGINE_URL}/api/backtest/run?symbol=${encodeURIComponent(symbol)}`, {
+    method: "POST",
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to trigger backtest for ${symbol}: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export interface SignalItem {
   id: number;
   symbol: string;
@@ -312,6 +324,7 @@ export interface SettingsData {
   daily_limit_pct: number;
   telegram_bot_token?: string;
   telegram_chat_id?: string;
+  gemini_api_key?: string;
 }
 
 export async function getSettings(): Promise<SettingsData> {

@@ -8,6 +8,7 @@ class SettingsUpdate(BaseModel):
     daily_limit_pct: Optional[float] = Field(None, gt=0, le=100, description="Daily loss limit percentage")
     telegram_bot_token: Optional[str] = Field(None, description="Telegram Bot Token")
     telegram_chat_id: Optional[str] = Field(None, description="Telegram Chat ID")
+    gemini_api_key: Optional[str] = Field(None, description="Google Gemini API Key")
 
 
 class JournalCreate(BaseModel):

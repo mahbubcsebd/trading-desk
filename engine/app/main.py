@@ -191,6 +191,22 @@ async def get_backtest_endpoint(
         return results
     finally:
         conn.close()
+
+
+@app.post("/api/backtest/run", dependencies=[Depends(verify_engine_key)])
+async def trigger_backtest_endpoint(
+    symbol: str = Query(..., description="Symbol, e.g. BTCUSD, XAUUSD"),
+) -> List[Dict[str, Any]]:
+    sym = symbol.upper()
+    if sym not in config.SYMBOLS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid symbol '{symbol}'. Supported symbols: {config.SYMBOLS}",
+        )
+    from app.backtest import run_backtest_for_symbol
+    loop = asyncio.get_event_loop()
+    results = await loop.run_in_executor(None, lambda: run_backtest_for_symbol(sym))
+    return results
 @app.get("/api/signals", dependencies=[Depends(verify_engine_key)])
 async def get_signals_endpoint(
     symbol: Optional[str] = Query(None, description="Optional symbol, e.g. BTCUSD, XAUUSD"),
@@ -215,6 +231,7 @@ async def get_settings_endpoint() -> Dict[str, Any]:
         "daily_limit_pct": float(st.get("daily_limit_pct", "3.0")),
         "telegram_bot_token": st.get("telegram_bot_token", ""),
         "telegram_chat_id": st.get("telegram_chat_id", ""),
+        "gemini_api_key": st.get("gemini_api_key", ""),
     }
 
 
@@ -230,6 +247,8 @@ async def update_settings_endpoint(body: SettingsUpdate) -> Dict[str, Any]:
         db.set_setting("telegram_bot_token", body.telegram_bot_token.strip())
     if body.telegram_chat_id is not None:
         db.set_setting("telegram_chat_id", body.telegram_chat_id.strip())
+    if body.gemini_api_key is not None:
+        db.set_setting("gemini_api_key", body.gemini_api_key.strip())
 
     # Recompute setups across all symbols with new sizing/limits
     for sym in config.SYMBOLS:
@@ -244,6 +263,7 @@ async def update_settings_endpoint(body: SettingsUpdate) -> Dict[str, Any]:
         "daily_limit_pct": float(st.get("daily_limit_pct", "3.0")),
         "telegram_bot_token": st.get("telegram_bot_token", ""),
         "telegram_chat_id": st.get("telegram_chat_id", ""),
+        "gemini_api_key": st.get("gemini_api_key", ""),
     }
 
 

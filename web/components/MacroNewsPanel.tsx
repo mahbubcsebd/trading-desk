@@ -228,3 +228,4 @@ export default function MacroNewsPanel({ macro, symbol }: MacroNewsPanelProps) {
     </div>
   );
 }
+

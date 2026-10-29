@@ -27,6 +27,7 @@ export default function SettingsDialog({ initialSettings }: SettingsDialogProps)
   const [dailyLimitPct, setDailyLimitPct] = useState(initialSettings.daily_limit_pct.toString());
   const [telegramToken, setTelegramToken] = useState(initialSettings.telegram_bot_token || "");
   const [telegramChatId, setTelegramChatId] = useState(initialSettings.telegram_chat_id || "");
+  const [geminiKey, setGeminiKey] = useState(initialSettings.gemini_api_key || "");
   const [testingTg, setTestingTg] = useState(false);
   const [tgResult, setTgResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -57,6 +58,7 @@ export default function SettingsDialog({ initialSettings }: SettingsDialogProps)
         daily_limit_pct: parseFloat(dailyLimitPct) || 3.0,
         telegram_bot_token: telegramToken,
         telegram_chat_id: telegramChatId,
+        gemini_api_key: geminiKey,
       });
       setSaved(true);
       setTimeout(() => {
@@ -215,6 +217,41 @@ export default function SettingsDialog({ initialSettings }: SettingsDialogProps)
                   {tgResult.msg}
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* Google Gemini AI Copilot Integration */}
+          <div className="pt-3 border-t border-zinc-800/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-200 uppercase tracking-wider flex items-center space-x-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <span>Google Gemini AI Copilot</span>
+              </span>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] text-cyan-400 hover:underline"
+              >
+                Get Free API Key ↗
+              </a>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="geminiKey" className="text-xs font-medium text-zinc-300">
+                Gemini API Key
+              </Label>
+              <Input
+                id="geminiKey"
+                type="password"
+                placeholder="AIzaSy..."
+                value={geminiKey}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGeminiKey(e.target.value)}
+                className="border-zinc-700 bg-zinc-950 font-mono text-zinc-100 text-xs"
+              />
+              <p className="text-[10px] text-zinc-500">
+                100% Free via Google AI Studio. Powers live market analysis & AI mentor chat.
+              </p>
             </div>
           </div>
 

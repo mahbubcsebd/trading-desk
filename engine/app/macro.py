@@ -263,3 +263,4 @@ def compute_macro_context(
         "dxy": dxy,
         "mtf": mtf,
     }
+

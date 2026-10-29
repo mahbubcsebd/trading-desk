@@ -9,6 +9,7 @@ import LiquidityPanel from "./LiquidityPanel";
 import StrategiesPanel from "./StrategiesPanel";
 import SmcAnalysisDeck from "./smc/SmcAnalysisDeck";
 import MacroNewsPanel from "./MacroNewsPanel";
+import AiCopilot from "./AiCopilot";
 import { Button } from "@/components/ui/button";
 import type { SnapshotData } from "@/lib/engine";
 
@@ -216,6 +217,9 @@ export default function DashboardView({
           price={currentSnapshot.price}
         />
       </div>
+
+      {/* 5. Real-Time TradeDesk AI Copilot & Market Mentor */}
+      <AiCopilot symbol={symbol} />
     </div>
   );
 }

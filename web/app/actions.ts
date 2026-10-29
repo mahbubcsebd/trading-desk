@@ -7,6 +7,7 @@ import {
   deleteJournalTrade,
   getSettings,
   testTelegram,
+  triggerBacktest,
   type SettingsData,
 } from "@/lib/engine";
 
@@ -20,6 +21,7 @@ export async function saveSettingsAction(data: {
   daily_limit_pct: number;
   telegram_bot_token?: string;
   telegram_chat_id?: string;
+  gemini_api_key?: string;
 }) {
   await updateSettings(data);
   revalidatePath("/");
@@ -51,4 +53,14 @@ export async function deleteJournalTradeAction(tradeId: number) {
   revalidatePath("/journal");
   revalidatePath("/");
   return { ok: true };
+}
+
+export async function runBacktestAction(symbol: string) {
+  try {
+    await triggerBacktest(symbol);
+    revalidatePath("/backtest");
+    return { ok: true };
+  } catch (err: unknown) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
 }

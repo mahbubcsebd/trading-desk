@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { getBacktest, getSignals, type BacktestResult } from "@/lib/engine";
 import { connection } from "next/server";
+import { RunBacktestButton } from "@/components/RunBacktestButton";
 
 async function BacktestData() {
   await connection();
@@ -55,11 +56,14 @@ async function BacktestData() {
                 15m candles • 70% In-Sample / 30% Out-of-Sample validation
               </CardDescription>
             </div>
-            {results.length > 0 && results[0].run_at > 0 && (
-              <span className="text-[11px] font-mono text-zinc-500">
-                Last run: {new Date(results[0].run_at).toLocaleString()}
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {results.length > 0 && results[0].run_at > 0 && (
+                <span className="text-[11px] font-mono text-zinc-500 hidden sm:inline">
+                  Last run: {new Date(results[0].run_at).toLocaleString()}
+                </span>
+              )}
+              <RunBacktestButton symbol={symbolCode} label={results.length > 0 && results[0].run_at > 0 ? "Re-run" : "Run Backtest"} />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -77,10 +81,13 @@ async function BacktestData() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {results.length === 0 ? (
+              {results.length === 0 || results.every((r) => r.run_at === 0) ? (
                 <TableRow className="border-zinc-800/80">
-                  <TableCell colSpan={8} className="text-center py-6 text-xs text-zinc-500">
-                    No backtest results found. Run CLI: <code className="text-zinc-300">uv run python -m app.backtest --symbol {symbolCode}</code>
+                  <TableCell colSpan={8} className="text-center py-8 text-xs text-zinc-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <p>No backtest results found yet for {symbolName}.</p>
+                      <RunBacktestButton symbol={symbolCode} label={`Run ${symbolCode} Backtest Now`} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
