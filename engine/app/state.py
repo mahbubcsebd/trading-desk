@@ -491,6 +491,17 @@ class AppState:
         except Exception as e:
             logger.error("Error computing SMC analysis: %s", e)
 
+        # Compute real-time Macro Context (Economic News, DXY, MTF Alignment)
+        macro_context = None
+        try:
+            from app.macro import compute_macro_context
+            df_15m = sym_state.get_dataframe("15m")
+            df_1h = sym_state.get_dataframe("1h")
+            df_4h = sym_state.get_dataframe("4h")
+            macro_context = compute_macro_context(df_15m, df_1h, df_4h)
+        except Exception as e:
+            logger.error("Error computing Macro context: %s", e)
+
         return {
             "symbol": sym,
             "ts": now_ms,
@@ -508,6 +519,7 @@ class AppState:
             "candle": candle_obj,
             "dailyLimitHit": sym_state.daily_limit_hit,
             "smc": smc_analysis,
+            "macro": macro_context,
         }
 
 

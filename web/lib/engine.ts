@@ -85,6 +85,39 @@ export interface SmcAnalysisData {
   risk: SmcRisk;
 }
 
+export interface NewsEvent {
+  title: string;
+  impact: string;
+  timeString: string;
+  minutesUntil: number;
+  forecast: string;
+  previous: string;
+  isPast?: boolean;
+}
+
+export interface MacroData {
+  news: {
+    isNewsWindow: boolean;
+    warning: string | null;
+    nextEvent: NewsEvent | null;
+    upcomingCount: number;
+    events: NewsEvent[];
+  };
+  dxy: {
+    price: number;
+    change24h: number;
+    bias: "bull" | "bear" | "neutral";
+    goldImpact: string;
+  };
+  mtf: {
+    alignment: string;
+    score: number;
+    tf15m: { tf: string; trend: string; status: string };
+    tf1h: { tf: string; trend: string; status: string };
+    tf4h: { tf: string; trend: string; status: string };
+  };
+}
+
 export interface SnapshotData {
   symbol: string;
   ts: number;
@@ -146,6 +179,7 @@ export interface SnapshotData {
   };
   dailyLimitHit: boolean;
   smc?: SmcAnalysisData;
+  macro?: MacroData;
 }
 
 export async function getHealth(): Promise<{ ok: boolean; feed: Record<string, string> }> {
@@ -276,6 +310,8 @@ export interface SettingsData {
   balance: number;
   risk_pct: number;
   daily_limit_pct: number;
+  telegram_bot_token?: string;
+  telegram_chat_id?: string;
 }
 
 export async function getSettings(): Promise<SettingsData> {
@@ -300,6 +336,21 @@ export async function updateSettings(body: Partial<SettingsData>): Promise<Setti
   });
   if (!res.ok) {
     throw new Error(`Failed to update settings: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function testTelegram(token?: string, chatId?: string): Promise<{ ok: boolean; message: string }> {
+  const res = await fetch(`${ENGINE_URL}/api/telegram/test`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Engine-Key": ENGINE_KEY,
+    },
+    body: JSON.stringify({ telegram_bot_token: token, telegram_chat_id: chatId }),
+  });
+  if (!res.ok) {
+    return { ok: false, message: `Server error: ${res.statusText}` };
   }
   return res.json();
 }

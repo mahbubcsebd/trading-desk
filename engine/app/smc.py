@@ -563,3 +563,4 @@ def compute_full_smc_analysis(
         "killzone": killzone,
         "risk": risk,
     }
+

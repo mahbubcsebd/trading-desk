@@ -8,6 +8,7 @@ import ContextPanel from "./ContextPanel";
 import LiquidityPanel from "./LiquidityPanel";
 import StrategiesPanel from "./StrategiesPanel";
 import SmcAnalysisDeck from "./smc/SmcAnalysisDeck";
+import MacroNewsPanel from "./MacroNewsPanel";
 import { Button } from "@/components/ui/button";
 import type { SnapshotData } from "@/lib/engine";
 
@@ -183,7 +184,13 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* 3. Full Institutional ICT / SMC Real Market Analysis Deck */}
+      {/* 3. Macro Economic News Radar, DXY Correlation & Multi-Timeframe Alignment */}
+      <MacroNewsPanel
+        macro={currentSnapshot.macro}
+        symbol={symbol}
+      />
+
+      {/* 4. Full Institutional ICT / SMC Real Market Analysis Deck */}
       <SmcAnalysisDeck
         smc={currentSnapshot.smc}
         symbol={symbol}

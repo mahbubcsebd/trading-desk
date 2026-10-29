@@ -135,3 +135,4 @@ export default function OrderBlocksCard({ orderBlocks, currentPrice }: OrderBloc
     </Card>
   );
 }
+

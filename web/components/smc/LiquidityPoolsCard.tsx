@@ -110,3 +110,4 @@ export default function LiquidityPoolsCard({ liquidity, currentPrice }: Liquidit
     </Card>
   );
 }
+

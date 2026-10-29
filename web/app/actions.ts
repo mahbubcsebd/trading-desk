@@ -6,6 +6,7 @@ import {
   addJournalTrade,
   deleteJournalTrade,
   getSettings,
+  testTelegram,
   type SettingsData,
 } from "@/lib/engine";
 
@@ -17,11 +18,17 @@ export async function saveSettingsAction(data: {
   balance: number;
   risk_pct: number;
   daily_limit_pct: number;
+  telegram_bot_token?: string;
+  telegram_chat_id?: string;
 }) {
   await updateSettings(data);
   revalidatePath("/");
   revalidatePath("/journal");
   return { ok: true };
+}
+
+export async function testTelegramAction(token?: string, chatId?: string) {
+  return await testTelegram(token, chatId);
 }
 
 export async function addJournalTradeAction(data: {

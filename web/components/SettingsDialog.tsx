@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Settings as SettingsIcon } from "lucide-react";
-import { saveSettingsAction } from "@/app/actions";
+import { saveSettingsAction, testTelegramAction } from "@/app/actions";
 import type { SettingsData } from "@/lib/engine";
 
 interface SettingsDialogProps {
@@ -25,8 +25,25 @@ export default function SettingsDialog({ initialSettings }: SettingsDialogProps)
   const [balance, setBalance] = useState(initialSettings.balance.toString());
   const [riskPct, setRiskPct] = useState(initialSettings.risk_pct.toString());
   const [dailyLimitPct, setDailyLimitPct] = useState(initialSettings.daily_limit_pct.toString());
+  const [telegramToken, setTelegramToken] = useState(initialSettings.telegram_bot_token || "");
+  const [telegramChatId, setTelegramChatId] = useState(initialSettings.telegram_chat_id || "");
+  const [testingTg, setTestingTg] = useState(false);
+  const [tgResult, setTgResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const handleTestTelegram = async () => {
+    setTestingTg(true);
+    setTgResult(null);
+    try {
+      const res = await testTelegramAction(telegramToken, telegramChatId);
+      setTgResult({ ok: res.ok, msg: res.message });
+    } catch (e: any) {
+      setTgResult({ ok: false, msg: e?.message || "Failed to reach engine" });
+    } finally {
+      setTestingTg(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +55,8 @@ export default function SettingsDialog({ initialSettings }: SettingsDialogProps)
         balance: parseFloat(balance) || 10000,
         risk_pct: parseFloat(riskPct) || 1.0,
         daily_limit_pct: parseFloat(dailyLimitPct) || 3.0,
+        telegram_bot_token: telegramToken,
+        telegram_chat_id: telegramChatId,
       });
       setSaved(true);
       setTimeout(() => {
@@ -130,6 +149,73 @@ export default function SettingsDialog({ initialSettings }: SettingsDialogProps)
             <p className="text-[11px] text-zinc-500">
               When today's realized loss reaches this threshold, new setups lock.
             </p>
+          </div>
+
+          {/* Telegram Instant Push Alerts */}
+          <div className="pt-3 border-t border-zinc-800/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-200 uppercase tracking-wider flex items-center space-x-1.5">
+                <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                <span>Telegram Signal Alerts</span>
+              </span>
+              <span className="text-[10px] text-zinc-500 font-mono">Instant Push</span>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="telegramToken" className="text-xs font-medium text-zinc-300">
+                Telegram Bot Token
+              </Label>
+              <Input
+                id="telegramToken"
+                type="text"
+                placeholder="123456789:ABCdefGhIJKlmNoPQRstuVWXyz"
+                value={telegramToken}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTelegramToken(e.target.value)}
+                className="border-zinc-700 bg-zinc-950 font-mono text-zinc-100 text-xs"
+              />
+              <p className="text-[10px] text-zinc-500">
+                Obtain free from Telegram @BotFather.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="telegramChatId" className="text-xs font-medium text-zinc-300">
+                Telegram Chat ID
+              </Label>
+              <Input
+                id="telegramChatId"
+                type="text"
+                placeholder="123456789 or @your_channel"
+                value={telegramChatId}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTelegramChatId(e.target.value)}
+                className="border-zinc-700 bg-zinc-950 font-mono text-zinc-100 text-xs"
+              />
+              <p className="text-[10px] text-zinc-500">
+                Your personal Chat ID (check with @userinfobot) or channel handle.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTestTelegram}
+                disabled={testingTg || !telegramToken || !telegramChatId}
+                className="text-xs border-zinc-700 bg-zinc-900 text-zinc-200 hover:bg-zinc-800"
+              >
+                {testingTg ? "Sending Test..." : "Send Test Alert"}
+              </Button>
+              {tgResult && (
+                <span
+                  className={`text-[11px] font-mono ${
+                    tgResult.ok ? "text-emerald-400 font-bold" : "text-rose-400 font-medium"
+                  }`}
+                >
+                  {tgResult.msg}
+                </span>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="pt-2">

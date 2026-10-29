@@ -122,3 +122,4 @@ export default function MarketStructureCard({ structure }: MarketStructureCardPr
     </Card>
   );
 }
+

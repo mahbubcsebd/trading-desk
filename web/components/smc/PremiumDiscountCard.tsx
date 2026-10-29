@@ -119,3 +119,4 @@ export default function PremiumDiscountCard({ pdArray, currentPrice }: PremiumDi
     </Card>
   );
 }
+

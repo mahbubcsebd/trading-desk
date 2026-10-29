@@ -120,3 +120,4 @@ export default function SmcAnalysisDeck({ smc, symbol, price }: SmcAnalysisDeckP
     </div>
   );
 }
+

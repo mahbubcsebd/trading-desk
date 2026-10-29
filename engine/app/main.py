@@ -207,23 +207,29 @@ async def get_signals_endpoint(
 
 
 @app.get("/api/settings", dependencies=[Depends(verify_engine_key)])
-async def get_settings_endpoint() -> Dict[str, float]:
+async def get_settings_endpoint() -> Dict[str, Any]:
     st = db.get_settings()
     return {
         "balance": float(st.get("balance", "10000.0")),
         "risk_pct": float(st.get("risk_pct", "1.0")),
         "daily_limit_pct": float(st.get("daily_limit_pct", "3.0")),
+        "telegram_bot_token": st.get("telegram_bot_token", ""),
+        "telegram_chat_id": st.get("telegram_chat_id", ""),
     }
 
 
 @app.put("/api/settings", dependencies=[Depends(verify_engine_key)])
-async def update_settings_endpoint(body: SettingsUpdate) -> Dict[str, float]:
+async def update_settings_endpoint(body: SettingsUpdate) -> Dict[str, Any]:
     if body.balance is not None:
         db.set_setting("balance", str(body.balance))
     if body.risk_pct is not None:
         db.set_setting("risk_pct", str(body.risk_pct))
     if body.daily_limit_pct is not None:
         db.set_setting("daily_limit_pct", str(body.daily_limit_pct))
+    if body.telegram_bot_token is not None:
+        db.set_setting("telegram_bot_token", body.telegram_bot_token.strip())
+    if body.telegram_chat_id is not None:
+        db.set_setting("telegram_chat_id", body.telegram_chat_id.strip())
 
     # Recompute setups across all symbols with new sizing/limits
     for sym in config.SYMBOLS:
@@ -236,7 +242,18 @@ async def update_settings_endpoint(body: SettingsUpdate) -> Dict[str, float]:
         "balance": float(st.get("balance", "10000.0")),
         "risk_pct": float(st.get("risk_pct", "1.0")),
         "daily_limit_pct": float(st.get("daily_limit_pct", "3.0")),
+        "telegram_bot_token": st.get("telegram_bot_token", ""),
+        "telegram_chat_id": st.get("telegram_chat_id", ""),
     }
+
+
+@app.post("/api/telegram/test", dependencies=[Depends(verify_engine_key)])
+async def test_telegram_endpoint(body: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    from app.alerts import test_telegram_alert
+    custom_token = body.get("telegram_bot_token") if body else None
+    custom_chat_id = body.get("telegram_chat_id") if body else None
+    ok, msg = await test_telegram_alert(custom_token, custom_chat_id)
+    return {"ok": ok, "message": msg}
 
 
 @app.get("/api/journal", dependencies=[Depends(verify_engine_key)])

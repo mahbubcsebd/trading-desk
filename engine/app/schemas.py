@@ -6,6 +6,8 @@ class SettingsUpdate(BaseModel):
     balance: Optional[float] = Field(None, gt=0, description="Account balance in USD")
     risk_pct: Optional[float] = Field(None, gt=0, le=100, description="Risk per trade percentage")
     daily_limit_pct: Optional[float] = Field(None, gt=0, le=100, description="Daily loss limit percentage")
+    telegram_bot_token: Optional[str] = Field(None, description="Telegram Bot Token")
+    telegram_chat_id: Optional[str] = Field(None, description="Telegram Chat ID")
 
 
 class JournalCreate(BaseModel):

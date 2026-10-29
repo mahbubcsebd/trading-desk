@@ -165,3 +165,4 @@ export default function RiskManagementCard({ risk, symbol, currentPrice }: RiskM
     </Card>
   );
 }
+

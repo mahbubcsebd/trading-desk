@@ -108,3 +108,4 @@ export default function KillzonesCard({ killzone }: KillzonesCardProps) {
     </Card>
   );
 }
+
