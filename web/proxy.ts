@@ -28,6 +28,9 @@ export async function proxy(req: NextRequest) {
   const isValid = await verifySessionToken(token);
 
   if (!isValid) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", req.url);
     return NextResponse.redirect(loginUrl);
   }
