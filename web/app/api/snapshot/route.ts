@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/session";
 import { getSnapshot } from "@/lib/engine";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
 export async function GET(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
   const isAuth = await verifySessionToken(token);
@@ -23,3 +20,4 @@ export async function GET(req: NextRequest) {
     return new NextResponse(err.message || "Failed to fetch snapshot", { status: 500 });
   }
 }
+
