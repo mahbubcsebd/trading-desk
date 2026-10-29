@@ -98,7 +98,7 @@ export default function DashboardView({
     <div className="space-y-6">
       {/* Top Bar Controls: Asset Switch & Live Indicator */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-800/60">
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -123,6 +123,22 @@ export default function DashboardView({
           >
             Bitcoin (BTC/USD)
           </Button>
+
+          {/* Quick Jump Shortcuts */}
+          <div className="hidden sm:flex items-center space-x-1.5 pl-2 border-l border-zinc-800/80">
+            <a
+              href="#macro-radar"
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-zinc-900/90 hover:bg-zinc-800 text-rose-300 hover:text-rose-200 border border-rose-500/20 transition-all flex items-center space-x-1"
+            >
+              <span>📰 News & DXY Radar</span>
+            </a>
+            <a
+              href="#smc-deck"
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-zinc-900/90 hover:bg-zinc-800 text-cyan-300 hover:text-cyan-200 border border-cyan-500/20 transition-all flex items-center space-x-1"
+            >
+              <span>🏛️ SMC Deck (6 Cards)</span>
+            </a>
+          </div>
         </div>
 
         {/* Live dot & freshness */}
@@ -185,17 +201,21 @@ export default function DashboardView({
       </div>
 
       {/* 3. Macro Economic News Radar, DXY Correlation & Multi-Timeframe Alignment */}
-      <MacroNewsPanel
-        macro={currentSnapshot.macro}
-        symbol={symbol}
-      />
+      <div id="macro-radar" className="scroll-mt-16">
+        <MacroNewsPanel
+          macro={currentSnapshot.macro}
+          symbol={symbol}
+        />
+      </div>
 
       {/* 4. Full Institutional ICT / SMC Real Market Analysis Deck */}
-      <SmcAnalysisDeck
-        smc={currentSnapshot.smc}
-        symbol={symbol}
-        price={currentSnapshot.price}
-      />
+      <div id="smc-deck" className="scroll-mt-16">
+        <SmcAnalysisDeck
+          smc={currentSnapshot.smc}
+          symbol={symbol}
+          price={currentSnapshot.price}
+        />
+      </div>
     </div>
   );
 }
