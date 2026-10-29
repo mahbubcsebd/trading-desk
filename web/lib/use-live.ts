@@ -15,6 +15,13 @@ export function useLive({ symbol, tf, initialSnapshot = null }: UseLiveOptions) 
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const esRef = useRef<EventSource | null>(null);
 
+  // Sync initialSnapshot when symbol or page props change
+  useEffect(() => {
+    if (initialSnapshot) {
+      setSnapshot(initialSnapshot);
+    }
+  }, [initialSnapshot]);
+
   useEffect(() => {
     let active = true;
     const url = `/api/stream?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`;
@@ -44,8 +51,25 @@ export function useLive({ symbol, tf, initialSnapshot = null }: UseLiveOptions) 
       if (active) setConnected(false);
     };
 
+    // Fast 2-second fallback polling to guarantee real-time sync with chart
+    const pollInterval = setInterval(async () => {
+      if (!active) return;
+      try {
+        const res = await fetch(`/api/snapshot?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`);
+        if (res.ok) {
+          const freshData = await res.json();
+          setSnapshot(freshData);
+          setLastUpdate(Date.now());
+          setConnected(true);
+        }
+      } catch {
+        // silent fallback
+      }
+    }, 2000);
+
     return () => {
       active = false;
+      clearInterval(pollInterval);
       es.close();
       esRef.current = null;
     };
