@@ -1,6 +1,6 @@
 import "server-only";
 
-const ENGINE_URL = process.env.ENGINE_URL || "http://127.0.0.1:8000";
+const ENGINE_URL = process.env.ENGINE_URL || "http://127.0.0.1:8001";
 const ENGINE_KEY = process.env.ENGINE_KEY || "change-me-long-random";
 
 export interface SmcStructure {
