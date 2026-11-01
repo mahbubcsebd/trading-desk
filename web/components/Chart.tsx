@@ -25,6 +25,7 @@ interface ChartProps {
   liveCandle?: SnapshotData["candle"] | null;
   setup?: SnapshotData["setup"] | null;
   liquidity?: SnapshotData["liquidity"] | null;
+  smc?: SnapshotData["smc"] | null;
 }
 
 const ALL_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1D"];
@@ -37,8 +38,10 @@ export default function Chart({
   liveCandle,
   setup,
   liquidity,
+  smc,
 }: ChartProps) {
-  const [chartMode, setChartMode] = useState<"exness" | "quant">("exness");
+  const [chartMode, setChartMode] = useState<"exness" | "quant">("quant");
+  const [showSmcZones, setShowSmcZones] = useState<boolean>(true);
   const chartWrapperRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -332,7 +335,7 @@ export default function Chart({
     }
   }, [liveCandle, activeTf]);
 
-  // 4. Update Price Lines (Entry / Stop / Target & Liquidity Walls)
+  // 4. Update Price Lines (Entry / Stop / Target, SMC Order Blocks, FVG & Liquidity Pools)
   useEffect(() => {
     if (!candleSeriesRef.current) return;
 
@@ -343,7 +346,7 @@ export default function Chart({
     }
     priceLinesRef.current = [];
 
-    // Active setup lines
+    // 4A. Active Setup Trade Lines (Entry, SL, TP)
     if (setup && (setup.action === "BUY" || setup.action === "SELL")) {
       if (setup.entry > 0) {
         const entryLine = candleSeriesRef.current.createPriceLine({
@@ -352,7 +355,7 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: "ENTRY",
+          title: `ENTRY $${setup.entry.toFixed(2)}`,
         });
         priceLinesRef.current.push(entryLine);
       }
@@ -363,7 +366,7 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: "STOP",
+          title: `STOP LOSS $${setup.sl.toFixed(2)}`,
         });
         priceLinesRef.current.push(slLine);
       }
@@ -374,17 +377,156 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: "TARGET",
+          title: `TARGET TP $${setup.tp.toFixed(2)}`,
         });
         priceLinesRef.current.push(tpLine);
       }
     }
 
-    // Liquidity Walls (Dashed Orderbook depth lines)
+    // 4B. SMC / ICT Overlays (Order Blocks, FVGs, Liquidity Pools & Equilibrium)
+    if (showSmcZones && smc) {
+      // 1. Bullish Order Block (Demand Zone)
+      const bullOB = smc.orderBlocks?.bullishOB;
+      if (bullOB && bullOB.top > 0) {
+        const bullObTop = candleSeriesRef.current.createPriceLine({
+          price: bullOB.top,
+          color: "#10b981", // Emerald-500
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: `🟢 DEMAND OB TOP $${bullOB.top.toFixed(2)}`,
+        });
+        priceLinesRef.current.push(bullObTop);
+
+        if (bullOB.bottom > 0 && Math.abs(bullOB.bottom - bullOB.top) > 0.05) {
+          const bullObBase = candleSeriesRef.current.createPriceLine({
+            price: bullOB.bottom,
+            color: "#059669", // Emerald-600
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `🟢 DEMAND OB BASE $${bullOB.bottom.toFixed(2)}`,
+          });
+          priceLinesRef.current.push(bullObBase);
+        }
+      }
+
+      // 2. Bearish Order Block (Supply Zone)
+      const bearOB = smc.orderBlocks?.bearishOB;
+      if (bearOB && bearOB.bottom > 0) {
+        const bearObBottom = candleSeriesRef.current.createPriceLine({
+          price: bearOB.bottom,
+          color: "#f43f5e", // Rose-500
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: `🔴 SUPPLY OB BASE $${bearOB.bottom.toFixed(2)}`,
+        });
+        priceLinesRef.current.push(bearObBottom);
+
+        if (bearOB.top > 0 && Math.abs(bearOB.top - bearOB.bottom) > 0.05) {
+          const bearObTop = candleSeriesRef.current.createPriceLine({
+            price: bearOB.top,
+            color: "#e11d48", // Rose-600
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `🔴 SUPPLY OB TOP $${bearOB.top.toFixed(2)}`,
+          });
+          priceLinesRef.current.push(bearObTop);
+        }
+      }
+
+      // 3. Buy-Side Liquidity Pool (BSL / Equal Highs)
+      const bsl = smc.liquidity?.bsl;
+      if (bsl && bsl.level > 0) {
+        const bslLine = candleSeriesRef.current.createPriceLine({
+          price: bsl.level,
+          color: "#f59e0b", // Amber-500
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `🎯 BSL LIQUIDITY $${bsl.level.toFixed(2)}`,
+        });
+        priceLinesRef.current.push(bslLine);
+      }
+
+      // 4. Sell-Side Liquidity Pool (SSL / Equal Lows)
+      const ssl = smc.liquidity?.ssl;
+      if (ssl && ssl.level > 0) {
+        const sslLine = candleSeriesRef.current.createPriceLine({
+          price: ssl.level,
+          color: "#a855f7", // Purple-500
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `🎯 SSL LIQUIDITY $${ssl.level.toFixed(2)}`,
+        });
+        priceLinesRef.current.push(sslLine);
+      }
+
+      // 5. Fair Value Gaps (FVG)
+      const bullFVG = smc.orderBlocks?.nearestBullishFVG;
+      if (bullFVG && bullFVG.top > 0 && !bullFVG.mitigated) {
+        const fvgMid = (bullFVG.top + bullFVG.bottom) / 2;
+        const bullFvgLine = candleSeriesRef.current.createPriceLine({
+          price: fvgMid,
+          color: "#06b6d4", // Cyan-500
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: `🟩 BULLISH FVG $${bullFVG.bottom.toFixed(2)}-$${bullFVG.top.toFixed(2)}`,
+        });
+        priceLinesRef.current.push(bullFvgLine);
+      }
+
+      const bearFVG = smc.orderBlocks?.nearestBearishFVG;
+      if (bearFVG && bearFVG.bottom > 0 && !bearFVG.mitigated) {
+        const fvgMid = (bearFVG.top + bearFVG.bottom) / 2;
+        const bearFvgLine = candleSeriesRef.current.createPriceLine({
+          price: fvgMid,
+          color: "#fb923c", // Orange-400
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: `🟥 BEARISH FVG $${bearFVG.bottom.toFixed(2)}-$${bearFVG.top.toFixed(2)}`,
+        });
+        priceLinesRef.current.push(bearFvgLine);
+      }
+
+      // 6. 50% Equilibrium & OTE Fib Zone
+      const pd = smc.pdArray;
+      if (pd && pd.equilibrium > 0) {
+        const eqLine = candleSeriesRef.current.createPriceLine({
+          price: pd.equilibrium,
+          color: "rgba(148, 163, 184, 0.7)", // Slate-400
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `⚖️ 50% EQUILIBRIUM $${pd.equilibrium.toFixed(2)}`,
+        });
+        priceLinesRef.current.push(eqLine);
+      }
+
+      if (pd?.oteLong && pd.oteLong.top > 0 && pd.oteLong.bottom > 0) {
+        const oteMid = (pd.oteLong.top + pd.oteLong.bottom) / 2;
+        const oteLine = candleSeriesRef.current.createPriceLine({
+          price: oteMid,
+          color: "#38bdf8", // Sky-400
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: `⚡ OTE FIB 62-79% $${pd.oteLong.bottom.toFixed(2)}-$${pd.oteLong.top.toFixed(2)}`,
+        });
+        priceLinesRef.current.push(oteLine);
+      }
+    }
+
+    // 4C. Liquidity Walls (Orderbook Depth Walls)
     if (liquidity?.buyWall?.price) {
       const buyWallLine = candleSeriesRef.current.createPriceLine({
         price: liquidity.buyWall.price,
-        color: "rgba(34, 197, 94, 0.7)",
+        color: "rgba(34, 197, 94, 0.5)",
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
@@ -396,7 +538,7 @@ export default function Chart({
     if (liquidity?.sellWall?.price) {
       const sellWallLine = candleSeriesRef.current.createPriceLine({
         price: liquidity.sellWall.price,
-        color: "rgba(239, 68, 68, 0.7)",
+        color: "rgba(239, 68, 68, 0.5)",
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
@@ -404,7 +546,7 @@ export default function Chart({
       });
       priceLinesRef.current.push(sellWallLine);
     }
-  }, [setup, liquidity]);
+  }, [setup, liquidity, smc, showSmcZones]);
 
   const handleResetZoom = () => {
     if (chartRef.current && candles.length > 0) {
@@ -464,13 +606,27 @@ export default function Chart({
           ))}
         </div>
 
-        {/* Center/Right: Feed Mode Switcher & Actions */}
+        {/* Center/Right: Feed Mode Switcher, SMC Toggle & Actions */}
         <div className="flex items-center space-x-2">
+          {/* Mode Switcher */}
           <div className="flex items-center bg-zinc-950/80 p-0.5 rounded-lg border border-zinc-800/80">
             <button
               type="button"
+              onClick={() => setChartMode("quant")}
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center space-x-1.5 cursor-pointer ${
+                chartMode === "quant"
+                  ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+              title="Lightweight Charts with live SMC Order Blocks, FVGs & Liquidity Pools"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              <span>SMC Quant Chart</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setChartMode("exness")}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center space-x-1.5 ${
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center space-x-1.5 cursor-pointer ${
                 chartMode === "exness"
                   ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200"
@@ -478,29 +634,33 @@ export default function Chart({
               title="Official TradingView Spot Gold/BTC feed matching Exness & OANDA"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span>Exness / OANDA Live</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartMode("quant")}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center space-x-1.5 ${
-                chartMode === "quant"
-                  ? "bg-blue-500/15 text-blue-300 border border-blue-500/30 shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-              title="Lightweight Charts with local orderbook liquidity depth walls"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-              <span>Quant Depth Walls</span>
+              <span>TradingView Live</span>
             </button>
           </div>
+
+          {/* SMC Zones Toggle (Visible in Quant mode) */}
+          {chartMode === "quant" && (
+            <button
+              type="button"
+              onClick={() => setShowSmcZones(!showSmcZones)}
+              className={`h-7 px-2.5 text-xs font-semibold rounded-md transition-all flex items-center space-x-1.5 border cursor-pointer ${
+                showSmcZones
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                  : "bg-zinc-900/60 text-zinc-500 border-zinc-800 hover:text-zinc-300"
+              }`}
+              title="Toggle Order Blocks, FVGs, BSL/SSL & Equilibrium lines directly on chart"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${showSmcZones ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"}`} />
+              <span>SMC Zones {showSmcZones ? "ON" : "OFF"}</span>
+            </button>
+          )}
 
           {chartMode === "quant" && (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleResetZoom}
-              className="h-7 px-2 text-[11px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 rounded font-medium"
+              className="h-7 px-2 text-[11px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 rounded font-medium cursor-pointer"
               title="Reset to latest candles"
             >
               Reset View
@@ -582,8 +742,108 @@ export default function Chart({
             </div>
           )}
 
-          {/* Chart Canvas */}
-          <div className="relative flex-1 min-h-[440px] w-full" ref={containerRef} />
+          {/* Chart Canvas & On-Chart Overlays */}
+          <div className="relative flex-1 min-h-[440px] w-full overflow-hidden" ref={containerRef}>
+            {/* On-Chart Live SMC HUD (Top-Left) */}
+            {showSmcZones && smc && (
+              <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none flex flex-col gap-1 max-w-[340px] select-none text-[11px] font-mono">
+                {/* Structure & Zone Badge */}
+                <div className="flex flex-wrap items-center gap-1.5 pointer-events-auto">
+                  <span
+                    className={`px-2 py-0.5 rounded font-bold shadow-sm backdrop-blur-md border ${
+                      smc.structure?.trend === "BULLISH"
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                        : smc.structure?.trend === "BEARISH"
+                        ? "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                        : "bg-zinc-800/80 text-zinc-300 border-zinc-700/60"
+                    }`}
+                  >
+                    {smc.structure?.trend === "BULLISH"
+                      ? "🟢 BULLISH"
+                      : smc.structure?.trend === "BEARISH"
+                      ? "🔴 BEARISH"
+                      : "⚪ NEUTRAL"}{" "}
+                    {smc.structure?.bos?.broken ? "• BOS ACTIVE" : ""}
+                  </span>
+
+                  {smc.pdArray?.zone && (
+                    <span
+                      className={`px-2 py-0.5 rounded font-semibold backdrop-blur-md border ${
+                        smc.pdArray.zone === "DISCOUNT"
+                          ? "bg-emerald-950/60 text-emerald-400 border-emerald-800/60"
+                          : smc.pdArray.zone === "PREMIUM"
+                          ? "bg-rose-950/60 text-rose-400 border-rose-800/60"
+                          : "bg-zinc-900/80 text-zinc-400 border-zinc-800"
+                      }`}
+                    >
+                      {smc.pdArray.zone} ({smc.pdArray.currentPercent}%)
+                    </span>
+                  )}
+                </div>
+
+                {/* Key Levels Pill Bar */}
+                <div className="p-1.5 px-2.5 rounded-lg bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-md space-y-0.5 text-[10px] text-zinc-300 shadow-lg pointer-events-auto">
+                  {smc.orderBlocks?.bullishOB?.top > 0 && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        Demand OB:
+                      </span>
+                      <span className="font-mono text-zinc-200">
+                        ${smc.orderBlocks.bullishOB.bottom.toFixed(2)} - ${smc.orderBlocks.bullishOB.top.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {smc.orderBlocks?.bearishOB?.bottom > 0 && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-rose-400 font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                        Supply OB:
+                      </span>
+                      <span className="font-mono text-zinc-200">
+                        ${smc.orderBlocks.bearishOB.bottom.toFixed(2)} - ${smc.orderBlocks.bearishOB.top.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {(smc.liquidity?.bsl?.level > 0 || smc.liquidity?.ssl?.level > 0) && (
+                    <div className="flex items-center justify-between gap-3 pt-0.5 border-t border-zinc-800/60">
+                      <span className="text-amber-400 font-medium">🎯 Liquidity:</span>
+                      <span className="font-mono text-zinc-300">
+                        BSL ${smc.liquidity?.bsl?.level?.toFixed(2) ?? "--"} • SSL ${smc.liquidity?.ssl?.level?.toFixed(2) ?? "--"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Bottom-Left Mini Legend Color Key */}
+            {showSmcZones && smc && (
+              <div className="absolute bottom-2 left-2 z-10 pointer-events-none flex items-center gap-2 px-2 py-1 rounded bg-[#0B0E14]/90 border border-zinc-800/80 backdrop-blur text-[9px] font-mono text-zinc-400 select-none hidden sm:flex">
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Demand
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span className="flex items-center gap-1 text-rose-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Supply
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span className="flex items-center gap-1 text-amber-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> BSL
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span className="flex items-center gap-1 text-purple-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> SSL
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span className="flex items-center gap-1 text-cyan-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" /> FVG
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -45,3 +45,4 @@ $$\text{Exness Lot Size} = \frac{\text{Dollar Risk}}{\text{SL Distance} \times 1
    - Total correlated risk across USD pairs must not exceed **2.0%**.
 3. **Breakeven Rule**:
    - Once price reaches **1:1.5 R:R** or sweeps the first intermediate liquidity pool, move Stop Loss to Breakeven (Entry + Spread Buffer).
+

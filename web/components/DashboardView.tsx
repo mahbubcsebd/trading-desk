@@ -172,6 +172,7 @@ export default function DashboardView({
           liveCandle={currentSnapshot.candle}
           setup={currentSnapshot.setup}
           liquidity={currentSnapshot.liquidity}
+          smc={currentSnapshot.smc}
         />
       </div>
 

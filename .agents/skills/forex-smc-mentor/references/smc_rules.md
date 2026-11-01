@@ -46,3 +46,4 @@ Not every opposite-color candle is an Order Block. A high-probability OB must sa
   - Candle 1 Low > Candle 3 High.
   - The gap between Candle 1 Low and Candle 3 High serves as resistance.
 - **Consequent Encroachment (CE)**: 50% midpoint of the FVG. Often acts as the exact institutional turnaround price.
+

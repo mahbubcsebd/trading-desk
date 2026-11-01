@@ -84,3 +84,4 @@ python .agents/skills/forex-smc-mentor/scripts/check_market.py --symbol XAUUSD
 
 For detailed reference on SMC patterns, see [references/smc_rules.md](./references/smc_rules.md).
 For risk calculation sheets, see [references/risk_rules.md](./references/risk_rules.md).
+
