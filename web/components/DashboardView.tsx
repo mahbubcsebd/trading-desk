@@ -9,6 +9,7 @@ import LiquidityPanel from "./LiquidityPanel";
 import StrategiesPanel from "./StrategiesPanel";
 import SmcAnalysisDeck from "./smc/SmcAnalysisDeck";
 import MacroNewsPanel from "./MacroNewsPanel";
+import SessionHudBar from "./SessionHudBar";
 import AiCopilot from "./AiCopilot";
 import { Button } from "@/components/ui/button";
 import type { SnapshotData } from "@/lib/engine";
@@ -97,6 +98,9 @@ export default function DashboardView({
 
   return (
     <div className="space-y-6">
+      {/* 0. Live Institutional Session Architecture, Killzone & Macro News HUD Bar */}
+      <SessionHudBar macro={currentSnapshot.macro} smc={currentSnapshot.smc} />
+
       {/* Top Bar Controls: Asset Switch & Live Indicator */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-800/60">
         <div className="flex flex-wrap items-center gap-2">
