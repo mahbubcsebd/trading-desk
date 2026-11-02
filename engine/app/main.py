@@ -237,6 +237,9 @@ async def get_backtest_endpoint(
                 "run_at": r["run_at"],
                 "in_sample": metrics.get("in_sample", {}),
                 "out_of_sample": metrics.get("out_of_sample", {}),
+                "overall": metrics.get("overall", {}),
+                "trades": metrics.get("trades", []),
+                "equity_curve": metrics.get("equity_curve", []),
             })
         return results
     finally:

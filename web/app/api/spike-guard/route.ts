@@ -19,3 +19,4 @@ export async function GET(req: NextRequest) {
     return new NextResponse(err.message || "Failed to fetch News Spike Guard", { status: 500 });
   }
 }
+

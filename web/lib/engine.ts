@@ -222,29 +222,54 @@ export async function getCandles(
   return res.json();
 }
 
+export interface BacktestTrade {
+  trade_id: number;
+  strategy: string;
+  side: "BUY" | "SELL";
+  entry_ts: number;
+  exit_ts: number;
+  entry_date: string;
+  exit_date: string;
+  entry: number;
+  exit: number;
+  sl: number;
+  tp: number;
+  result_r: number;
+  pnl_usd: number;
+  exit_reason: "TP" | "SL" | "EXPIRY";
+  bars_held: number;
+}
+
+export interface EquityPoint {
+  trade_num: number;
+  ts: number;
+  date: string;
+  result_r: number;
+  cumulative_r: number;
+  equity_usd: number;
+  drawdown_pct: number;
+}
+
+export interface BacktestMetrics {
+  trades: number;
+  win_rate: number;
+  avg_r: number;
+  expectancy: number;
+  profit_factor: number;
+  max_drawdown: number;
+  total_r: number;
+}
+
 export interface BacktestResult {
   symbol: string;
   strategy: string;
   enabled: boolean;
   run_at: number;
-  in_sample: {
-    trades: number;
-    win_rate: number;
-    avg_r: number;
-    expectancy: number;
-    profit_factor: number;
-    max_drawdown: number;
-    total_r: number;
-  };
-  out_of_sample: {
-    trades: number;
-    win_rate: number;
-    avg_r: number;
-    expectancy: number;
-    profit_factor: number;
-    max_drawdown: number;
-    total_r: number;
-  };
+  in_sample: BacktestMetrics;
+  out_of_sample: BacktestMetrics;
+  overall?: BacktestMetrics;
+  trades?: BacktestTrade[];
+  equity_curve?: EquityPoint[];
 }
 
 export async function getBacktest(symbol: string): Promise<BacktestResult[]> {

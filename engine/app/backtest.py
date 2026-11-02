@@ -52,6 +52,47 @@ async def backfill_candles(symbol: str, tf: str = "15m", target_bars: int = 5000
     return collected_count
 
 
+from bisect import bisect_right
+import datetime
+
+def generate_equity_curve(trades_list: List[Dict[str, Any]], initial_balance: float = 10000.0) -> List[Dict[str, Any]]:
+    """
+    Simulates cumulative R and account equity growth with 1% institutional risk per trade.
+    """
+    cum_r = 0.0
+    equity = initial_balance
+    peak = initial_balance
+    curve = [{
+        "trade_num": 0,
+        "ts": trades_list[0]["entry_ts"] if trades_list else int(time.time() * 1000),
+        "date": "Start",
+        "result_r": 0.0,
+        "cumulative_r": 0.0,
+        "equity_usd": initial_balance,
+        "drawdown_pct": 0.0,
+    }]
+
+    for idx, t in enumerate(trades_list):
+        r = t["result_r"]
+        pnl = round(r * (initial_balance * 0.01), 2)  # $100 per R at 1% risk
+        cum_r = round(cum_r + r, 2)
+        equity = round(equity + pnl, 2)
+        peak = max(peak, equity)
+        dd = round(max(0.0, (peak - equity) / peak * 100.0), 2)
+        
+        exit_dt = datetime.datetime.fromtimestamp(t["exit_ts"] / 1000, tz=datetime.timezone.utc)
+        curve.append({
+            "trade_num": idx + 1,
+            "ts": t["exit_ts"],
+            "date": exit_dt.strftime("%m/%d %H:%M"),
+            "result_r": r,
+            "cumulative_r": cum_r,
+            "equity_usd": equity,
+            "drawdown_pct": dd,
+        })
+    return curve
+
+
 def calculate_metrics(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not trades:
         return {
@@ -161,19 +202,24 @@ def simulate_strategy(
             if side == "buy":
                 hit_stop = low <= stop
                 hit_target = high >= target
+                exit_reason = "EXPIRY"
 
                 # Stop-first rule if both hit in same candle
                 if hit_stop and hit_target:
                     exit_price = stop * (1.0 - config.SLIPPAGE)
+                    exit_reason = "SL"
                     closed = True
                 elif hit_stop:
                     exit_price = stop * (1.0 - config.SLIPPAGE)
+                    exit_reason = "SL"
                     closed = True
                 elif hit_target:
                     exit_price = target * (1.0 - config.SLIPPAGE)
+                    exit_reason = "TP"
                     closed = True
                 elif bars_held >= config.SIGNAL_EXPIRY_BARS:
                     exit_price = close_price * (1.0 - config.SLIPPAGE)
+                    exit_reason = "EXPIRY"
                     closed = True
 
                 if closed:
@@ -181,45 +227,72 @@ def simulate_strategy(
                     fee = (entry_price + exit_price) * config.TAKER_FEE
                     net_pnl = (exit_price - entry_price) - fee
                     result_r = round(net_pnl / initial_risk, 2)
+                    entry_dt = datetime.datetime.fromtimestamp(open_trade["entry_ts"] / 1000, tz=datetime.timezone.utc)
+                    exit_dt = datetime.datetime.fromtimestamp(bar_close_time / 1000, tz=datetime.timezone.utc)
                     trades.append({
+                        "trade_id": len(trades) + 1,
+                        "strategy": strategy_id,
+                        "side": "BUY",
                         "entry_ts": open_trade["entry_ts"],
                         "exit_ts": bar_close_time,
-                        "side": side,
-                        "entry": entry_price,
-                        "exit": exit_price,
+                        "entry_date": entry_dt.strftime("%Y-%m-%d %H:%M"),
+                        "exit_date": exit_dt.strftime("%Y-%m-%d %H:%M"),
+                        "entry": round(entry_price, 4),
+                        "exit": round(exit_price, 4),
+                        "sl": round(stop, 4),
+                        "tp": round(target, 4),
                         "result_r": result_r,
+                        "pnl_usd": round(result_r * 100.0, 2),
+                        "exit_reason": exit_reason,
+                        "bars_held": bars_held,
                     })
                     open_trade = None
 
             elif side == "sell":
                 hit_stop = high >= stop
                 hit_target = low <= target
+                exit_reason = "EXPIRY"
 
                 # Stop-first rule if both hit in same candle
                 if hit_stop and hit_target:
                     exit_price = stop * (1.0 + config.SLIPPAGE)
+                    exit_reason = "SL"
                     closed = True
                 elif hit_stop:
                     exit_price = stop * (1.0 + config.SLIPPAGE)
+                    exit_reason = "SL"
                     closed = True
                 elif hit_target:
                     exit_price = target * (1.0 + config.SLIPPAGE)
+                    exit_reason = "TP"
                     closed = True
                 elif bars_held >= config.SIGNAL_EXPIRY_BARS:
                     exit_price = close_price * (1.0 + config.SLIPPAGE)
+                    exit_reason = "EXPIRY"
                     closed = True
 
                 if closed:
                     fee = (entry_price + exit_price) * config.TAKER_FEE
                     net_pnl = (entry_price - exit_price) - fee
                     result_r = round(net_pnl / initial_risk, 2)
+                    entry_dt = datetime.datetime.fromtimestamp(open_trade["entry_ts"] / 1000, tz=datetime.timezone.utc)
+                    exit_dt = datetime.datetime.fromtimestamp(bar_close_time / 1000, tz=datetime.timezone.utc)
                     trades.append({
+                        "trade_id": len(trades) + 1,
+                        "strategy": strategy_id,
+                        "side": "SELL",
                         "entry_ts": open_trade["entry_ts"],
                         "exit_ts": bar_close_time,
-                        "side": side,
-                        "entry": entry_price,
-                        "exit": exit_price,
+                        "entry_date": entry_dt.strftime("%Y-%m-%d %H:%M"),
+                        "exit_date": exit_dt.strftime("%Y-%m-%d %H:%M"),
+                        "entry": round(entry_price, 4),
+                        "exit": round(exit_price, 4),
+                        "sl": round(stop, 4),
+                        "tp": round(target, 4),
                         "result_r": result_r,
+                        "pnl_usd": round(result_r * 100.0, 2),
+                        "exit_reason": exit_reason,
+                        "bars_held": bars_held,
                     })
                     open_trade = None
 
@@ -292,13 +365,27 @@ def run_backtest_for_symbol(symbol: str, target_bars: int = 4000) -> List[Dict[s
     df_1h = pd.DataFrame(candles_1h, columns=["ts", "open", "high", "low", "close", "volume"])
     df_4h = pd.DataFrame(candles_4h, columns=["ts", "open", "high", "low", "close", "volume"])
 
-    # Precalculate rolling regime & bias for each 15m candle using available 1h and 4h data
+    # Fast precalculation of rolling regime & bias per 1h bar (reduced from 1000 to ~250 iterations)
+    h1_ts_list = []
+    h1_contexts = []
+    for i in range(20, len(df_1h)):
+        ts_1h = int(df_1h["ts"].iloc[i])
+        sub_1h = df_1h.iloc[: i + 1]
+        sub_4h = df_4h[df_4h["ts"] <= ts_1h]
+        h1_ts_list.append(ts_1h)
+        h1_contexts.append(calc_market_context(sub_1h, sub_4h))
+
+    default_ctx = (
+        calc_market_context(df_1h.iloc[:20], df_4h.iloc[:5])
+        if len(df_1h) >= 20
+        else {"regime": {"state": "ranging", "volatility": "normal"}, "bias": {"h1": "neutral", "h4": "neutral"}}
+    )
+
     regime_series = []
     bias_series = []
     for ts in df_15m["ts"]:
-        sub_1h = df_1h[df_1h["ts"] <= ts]
-        sub_4h = df_4h[df_4h["ts"] <= ts]
-        ctx = calc_market_context(sub_1h, sub_4h)
+        idx = bisect_right(h1_ts_list, ts) - 1
+        ctx = h1_contexts[idx] if idx >= 0 and idx < len(h1_contexts) else default_ctx
         regime_series.append(ctx["regime"])
         bias_series.append(ctx["bias"])
 
@@ -317,6 +404,8 @@ def run_backtest_for_symbol(symbol: str, target_bars: int = 4000) -> List[Dict[s
 
         in_sample_metrics = calculate_metrics(in_sample_trades)
         out_sample_metrics = calculate_metrics(out_sample_trades)
+        overall_metrics = calculate_metrics(trades)
+        equity_curve = generate_equity_curve(trades)
 
         # Enabling rule: out-of-sample trades >= 30, expectancy > 0, profit_factor >= 1.2
         enabled = bool(
@@ -328,6 +417,9 @@ def run_backtest_for_symbol(symbol: str, target_bars: int = 4000) -> List[Dict[s
         metrics_obj = {
             "in_sample": in_sample_metrics,
             "out_of_sample": out_sample_metrics,
+            "overall": overall_metrics,
+            "trades": trades,
+            "equity_curve": equity_curve,
         }
 
         # Save to DB
@@ -351,6 +443,9 @@ def run_backtest_for_symbol(symbol: str, target_bars: int = 4000) -> List[Dict[s
             "run_at": run_at_ms,
             "in_sample": in_sample_metrics,
             "out_of_sample": out_sample_metrics,
+            "overall": overall_metrics,
+            "trades": trades,
+            "equity_curve": equity_curve,
         })
 
     return results
