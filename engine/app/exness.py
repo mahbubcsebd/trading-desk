@@ -76,11 +76,32 @@ class ExnessRestClient:
         )
 
     def _get_spot_price_tv(self, symbol: str) -> Optional[float]:
-        """Fetches spot price directly from TradingView CFD scanner (exact match with chart)."""
-        ticker = "OANDA:XAUUSD" if symbol == "XAUUSD" else "INDEX:BTCUSD"
+        """Fetches spot price directly from TradingView CFD / Forex / Crypto scanner."""
+        scanner_endpoint = "forex"
+        ticker = None
+        sym = symbol.upper()
+
+        if sym == "XAUUSD":
+            scanner_endpoint = "cfd"
+            ticker = "OANDA:XAUUSD"
+        elif sym == "BTCUSD":
+            scanner_endpoint = "crypto"
+            ticker = "COINBASE:BTCUSD"
+        elif sym == "EURUSD":
+            scanner_endpoint = "forex"
+            ticker = "FX:EURUSD"
+        elif sym == "GBPUSD":
+            scanner_endpoint = "forex"
+            ticker = "FX:GBPUSD"
+        elif sym == "USDJPY":
+            scanner_endpoint = "forex"
+            ticker = "FX:USDJPY"
+        else:
+            return None
+
         try:
             r = httpx.post(
-                "https://scanner.tradingview.com/cfd/scan",
+                f"https://scanner.tradingview.com/{scanner_endpoint}/scan",
                 json={"symbols": {"tickers": [ticker]}, "columns": ["close"]},
                 timeout=3.0,
             )
@@ -96,10 +117,13 @@ class ExnessRestClient:
 
     def get_latest_price(self, symbol: str) -> Optional[float]:
         """Return the latest live spot price (matches TradingView chart)."""
-        # 1. TradingView scanner (exact cent match with chart widget)
+        rules = config.EXNESS_INSTRUMENT_RULES.get(symbol, {})
+        decimals = rules.get("decimals", 2)
+
+        # 1. TradingView scanner (exact cent/pip match with chart widget)
         tv_price = self._get_spot_price_tv(symbol)
         if tv_price:
-            return round(tv_price, 2)
+            return round(tv_price, decimals)
 
         # 2. Fallback to Yahoo Finance fast_info
         yf_ticker = config.SYMBOL_TO_YF.get(symbol)
@@ -109,7 +133,7 @@ class ExnessRestClient:
             ticker = yf.Ticker(yf_ticker)
             price = ticker.fast_info.last_price
             if price and float(price) > 0:
-                return round(float(price), 2)
+                return round(float(price), decimals)
         except Exception as exc:
             logger.debug(f"Could not fetch fast_info price for {symbol}: {exc}")
         return None

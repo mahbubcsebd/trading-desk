@@ -299,3 +299,4 @@ export default function SoundAlertsDialog({ triggerButton }: SoundAlertsDialogPr
     </Dialog>
   );
 }
+

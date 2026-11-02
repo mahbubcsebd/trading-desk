@@ -25,6 +25,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { SnapshotData } from "@/lib/engine";
+import { getSymbolConfig, formatPriceWithUnit, formatSymbolPrice } from "@/lib/formatters";
 
 interface FastOrderModalProps {
   symbol: string;
@@ -69,8 +70,47 @@ export default function FastOrderModal({
 
   // Derive Order Levels based on activeTab & orderSide
   const orderLevels = useMemo(() => {
-    const isGold = symbol.toUpperCase().includes("XAU");
-    const contractMultiplier = isGold ? 100 : 1; // 100 oz per gold lot, 1 coin per BTC lot
+    const symConfig = getSymbolConfig(symbol);
+    const sym = symbol.toUpperCase();
+    const isGold = sym.includes("XAU");
+    const isCrypto = sym.includes("BTC") || sym.includes("ETH");
+    const isForexMajor = sym.includes("EUR") || sym.includes("GBP") || sym.includes("AUD") || sym.includes("NZD");
+    const isJpy = sym.includes("JPY");
+    const isIndex = sym.includes("US30") || sym.includes("NAS100") || sym.includes("SPX");
+
+    const decimals = symConfig.decimals;
+    let minLot = 0.01;
+    let contractMultiplier = 1;
+
+    let buffer = 2.5;
+    let slBuffer = 0.8;
+
+    if (isGold) {
+      minLot = 0.01;
+      contractMultiplier = 100; // 100 oz per lot ($1 move = $100/lot)
+      buffer = 2.5;
+      slBuffer = 0.8;
+    } else if (isCrypto) {
+      minLot = 0.001;
+      contractMultiplier = 1; // 1 coin per lot ($1 move = $1/lot)
+      buffer = 300;
+      slBuffer = 80;
+    } else if (isForexMajor) {
+      minLot = 0.01;
+      contractMultiplier = 100000; // 100,000 units base (0.0001 pip = $10/lot)
+      buffer = 0.0015;  // 15 pips
+      slBuffer = 0.0006; // 6 pips
+    } else if (isJpy) {
+      minLot = 0.01;
+      contractMultiplier = price > 0 ? 100000 / price : 635; // 100,000 USD/JPY
+      buffer = 0.25;    // 25 pips
+      slBuffer = 0.08;   // 8 pips
+    } else if (isIndex) {
+      minLot = 0.01;
+      contractMultiplier = 1; // $1 per point
+      buffer = 35;      // 35 points
+      slBuffer = 12;     // 12 points
+    }
 
     let entry = price;
     let sl = price * 0.995;
@@ -82,15 +122,15 @@ export default function FastOrderModal({
       if (orderSide === "BUY") {
         orderType = "BUY LIMIT";
         const bullOB = smc.orderBlocks?.bullishOB;
-        entry = bullOB && bullOB.top > 0 ? bullOB.top : price * 0.998;
-        sl = bullOB && bullOB.bottom > 0 ? bullOB.bottom - (isGold ? 0.8 : 80) : entry - (isGold ? 3.0 : 350);
+        entry = bullOB && bullOB.top > 0 ? bullOB.top : price * (isForexMajor ? 0.999 : 0.998);
+        sl = bullOB && bullOB.bottom > 0 ? bullOB.bottom - slBuffer : entry - buffer;
         tp1 = smc.pdArray?.equilibrium || entry + (entry - sl) * 2;
         tp2 = smc.liquidity?.bsl?.level || entry + (entry - sl) * 3.5;
       } else {
         orderType = "SELL LIMIT";
         const bearOB = smc.orderBlocks?.bearishOB;
-        entry = bearOB && bearOB.bottom > 0 ? bearOB.bottom : price * 1.002;
-        sl = bearOB && bearOB.top > 0 ? bearOB.top + (isGold ? 0.8 : 80) : entry + (isGold ? 3.0 : 350);
+        entry = bearOB && bearOB.bottom > 0 ? bearOB.bottom : price * (isForexMajor ? 1.001 : 1.002);
+        sl = bearOB && bearOB.top > 0 ? bearOB.top + slBuffer : entry + buffer;
         tp1 = smc.pdArray?.equilibrium || entry - (sl - entry) * 2;
         tp2 = smc.liquidity?.ssl?.level || entry - (sl - entry) * 3.5;
       }
@@ -112,7 +152,6 @@ export default function FastOrderModal({
       // Market Execution (CMP)
       orderType = orderSide === "BUY" ? "BUY (MARKET)" : "SELL (MARKET)";
       entry = price;
-      const buffer = isGold ? 2.5 : 300;
       sl = orderSide === "BUY" ? entry - buffer : entry + buffer;
       tp1 = orderSide === "BUY" ? entry + buffer * 2 : entry - buffer * 2;
       tp2 = orderSide === "BUY" ? entry + buffer * 3.5 : entry - buffer * 3.5;
@@ -128,35 +167,36 @@ export default function FastOrderModal({
     if (slDistance > 0 && contractMultiplier > 0) {
       exactLots = dollarRisk / (slDistance * contractMultiplier);
     }
-    // Round to 2 decimal places (or 3 for BTC), minimum 0.01
-    const minLot = isGold ? 0.01 : 0.001;
     const lotSize = Math.max(minLot, Math.floor(exactLots * 100) / 100);
     const actualRiskUsd = lotSize * slDistance * contractMultiplier;
     const projectedProfitUsd = lotSize * tp1Distance * contractMultiplier;
 
     return {
       orderType,
-      entry: Number(entry.toFixed(2)),
-      sl: Number(sl.toFixed(2)),
-      tp1: Number(tp1.toFixed(2)),
-      tp2: Number(tp2.toFixed(2)),
-      slDistance: Number(slDistance.toFixed(2)),
+      entry: Number(entry.toFixed(decimals)),
+      sl: Number(sl.toFixed(decimals)),
+      tp1: Number(tp1.toFixed(decimals)),
+      tp2: Number(tp2.toFixed(decimals)),
+      slDistance: Number(slDistance.toFixed(decimals)),
       rr1: Number(rr1.toFixed(1)),
       lotSize,
       actualRiskUsd: Number(actualRiskUsd.toFixed(2)),
       projectedProfitUsd: Number(projectedProfitUsd.toFixed(2)),
+      decimals,
+      isForex: isForexMajor || isJpy,
     };
   }, [symbol, price, activeTab, orderSide, smc, setup, balance, riskPct]);
 
   // Formatted Ticket Text
   const fullTicketText = useMemo(() => {
+    const prefix = orderLevels.isForex ? "" : "$";
     return `=== EXNESS MT5 ORDER TICKET ===
 Symbol:      ${mt5Symbol}
 Order Type:  ${orderLevels.orderType}
 Volume:      ${orderLevels.lotSize} Lots
-Open Price:  $${orderLevels.entry.toFixed(2)}
-Stop Loss:   $${orderLevels.sl.toFixed(2)} (-$${orderLevels.slDistance.toFixed(2)})
-Take Profit: $${orderLevels.tp1.toFixed(2)}
+Open Price:  ${prefix}${orderLevels.entry.toFixed(orderLevels.decimals)}
+Stop Loss:   ${prefix}${orderLevels.sl.toFixed(orderLevels.decimals)} (-${orderLevels.slDistance.toFixed(orderLevels.decimals)})
+Take Profit: ${prefix}${orderLevels.tp1.toFixed(orderLevels.decimals)}
 -------------------------------
 Risk Amount: $${orderLevels.actualRiskUsd.toFixed(2)} (${riskPct}% of $${balance})
 Est. Profit: $${orderLevels.projectedProfitUsd.toFixed(2)} (1:${orderLevels.rr1} R:R)
@@ -375,7 +415,7 @@ Generated by TradeDesk Institutional Copilot`;
               >
                 <span className="text-[10px] text-zinc-400 font-semibold block">Open Price</span>
                 <span className="text-sm font-bold font-mono text-zinc-100 tabular-nums">
-                  ${orderLevels.entry.toFixed(2)}
+                  {formatPriceWithUnit(orderLevels.entry, symbol)}
                 </span>
                 <span className="absolute top-2 right-2 text-zinc-500 group-hover:text-cyan-300">
                   {copiedField === "entry" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -389,7 +429,7 @@ Generated by TradeDesk Institutional Copilot`;
               >
                 <span className="text-[10px] text-zinc-400 font-semibold block">Stop Loss (SL)</span>
                 <span className="text-sm font-bold font-mono text-rose-400 tabular-nums">
-                  ${orderLevels.sl.toFixed(2)}
+                  {formatPriceWithUnit(orderLevels.sl, symbol)}
                 </span>
                 <span className="absolute top-2 right-2 text-zinc-500 group-hover:text-rose-400">
                   {copiedField === "sl" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -403,7 +443,7 @@ Generated by TradeDesk Institutional Copilot`;
               >
                 <span className="text-[10px] text-zinc-400 font-semibold block">Take Profit (TP)</span>
                 <span className="text-sm font-bold font-mono text-emerald-400 tabular-nums">
-                  ${orderLevels.tp1.toFixed(2)}
+                  {formatPriceWithUnit(orderLevels.tp1, symbol)}
                 </span>
                 <span className="absolute top-2 right-2 text-zinc-500 group-hover:text-emerald-400">
                   {copiedField === "tp" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3 h-3" />}

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Maximize2, Minimize2 } from "lucide-react";
 import type { SnapshotData } from "@/lib/engine";
 import TradingViewChart from "./TradingViewChart";
+import { getSymbolConfig, formatPriceWithUnit, formatSymbolPrice } from "@/lib/formatters";
 
 interface ChartProps {
   symbol: string;
@@ -229,6 +230,16 @@ export default function Chart({
   useEffect(() => {
     if (!candleSeriesRef.current || !volumeSeriesRef.current || !candles || candles.length === 0) return;
 
+    // Apply accurate decimal precision for this symbol
+    const symConfig = getSymbolConfig(symbol);
+    candleSeriesRef.current.applyOptions({
+      priceFormat: {
+        type: "price",
+        precision: symConfig.decimals,
+        minMove: Math.pow(10, -symConfig.decimals),
+      },
+    });
+
     const formattedCandlesMap = new Map<number, { time: UTCTimestamp; open: number; high: number; low: number; close: number }>();
     const formattedVolumeMap = new Map<number, { time: UTCTimestamp; value: number; color: string }>();
 
@@ -346,6 +357,9 @@ export default function Chart({
     }
     priceLinesRef.current = [];
 
+    // Helper for currency-aware price labels
+    const fmtP = (p: number) => formatPriceWithUnit(p, symbol);
+
     // 4A. Active Setup Trade Lines (Entry, SL, TP)
     if (setup && (setup.action === "BUY" || setup.action === "SELL")) {
       if (setup.entry > 0) {
@@ -355,7 +369,7 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: `ENTRY $${setup.entry.toFixed(2)}`,
+          title: `ENTRY ${fmtP(setup.entry)}`,
         });
         priceLinesRef.current.push(entryLine);
       }
@@ -366,7 +380,7 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: `STOP LOSS $${setup.sl.toFixed(2)}`,
+          title: `STOP LOSS ${fmtP(setup.sl)}`,
         });
         priceLinesRef.current.push(slLine);
       }
@@ -377,7 +391,7 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: `TARGET TP $${setup.tp.toFixed(2)}`,
+          title: `TARGET TP ${fmtP(setup.tp)}`,
         });
         priceLinesRef.current.push(tpLine);
       }
@@ -394,18 +408,18 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: `🟢 DEMAND OB TOP $${bullOB.top.toFixed(2)}`,
+          title: `🟢 DEMAND OB TOP ${fmtP(bullOB.top)}`,
         });
         priceLinesRef.current.push(bullObTop);
 
-        if (bullOB.bottom > 0 && Math.abs(bullOB.bottom - bullOB.top) > 0.05) {
+        if (bullOB.bottom > 0 && Math.abs(bullOB.bottom - bullOB.top) > 0.0001) {
           const bullObBase = candleSeriesRef.current.createPriceLine({
             price: bullOB.bottom,
             color: "#059669", // Emerald-600
             lineWidth: 1,
             lineStyle: LineStyle.Dashed,
             axisLabelVisible: true,
-            title: `🟢 DEMAND OB BASE $${bullOB.bottom.toFixed(2)}`,
+            title: `🟢 DEMAND OB BASE ${fmtP(bullOB.bottom)}`,
           });
           priceLinesRef.current.push(bullObBase);
         }
@@ -420,18 +434,18 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: `🔴 SUPPLY OB BASE $${bearOB.bottom.toFixed(2)}`,
+          title: `🔴 SUPPLY OB BASE ${fmtP(bearOB.bottom)}`,
         });
         priceLinesRef.current.push(bearObBottom);
 
-        if (bearOB.top > 0 && Math.abs(bearOB.top - bearOB.bottom) > 0.05) {
+        if (bearOB.top > 0 && Math.abs(bearOB.top - bearOB.bottom) > 0.0001) {
           const bearObTop = candleSeriesRef.current.createPriceLine({
             price: bearOB.top,
             color: "#e11d48", // Rose-600
             lineWidth: 1,
             lineStyle: LineStyle.Dashed,
             axisLabelVisible: true,
-            title: `🔴 SUPPLY OB TOP $${bearOB.top.toFixed(2)}`,
+            title: `🔴 SUPPLY OB TOP ${fmtP(bearOB.top)}`,
           });
           priceLinesRef.current.push(bearObTop);
         }
@@ -446,7 +460,7 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `🎯 BSL LIQUIDITY $${bsl.level.toFixed(2)}`,
+          title: `🎯 BSL LIQUIDITY ${fmtP(bsl.level)}`,
         });
         priceLinesRef.current.push(bslLine);
       }
@@ -460,7 +474,7 @@ export default function Chart({
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `🎯 SSL LIQUIDITY $${ssl.level.toFixed(2)}`,
+          title: `🎯 SSL LIQUIDITY ${fmtP(ssl.level)}`,
         });
         priceLinesRef.current.push(sslLine);
       }
@@ -475,7 +489,7 @@ export default function Chart({
           lineWidth: 1,
           lineStyle: LineStyle.Dotted,
           axisLabelVisible: true,
-          title: `🟩 BULLISH FVG $${bullFVG.bottom.toFixed(2)}-$${bullFVG.top.toFixed(2)}`,
+          title: `🟩 BULLISH FVG ${fmtP(bullFVG.bottom)}-${fmtP(bullFVG.top)}`,
         });
         priceLinesRef.current.push(bullFvgLine);
       }
@@ -489,7 +503,7 @@ export default function Chart({
           lineWidth: 1,
           lineStyle: LineStyle.Dotted,
           axisLabelVisible: true,
-          title: `🟥 BEARISH FVG $${bearFVG.bottom.toFixed(2)}-$${bearFVG.top.toFixed(2)}`,
+          title: `🟥 BEARISH FVG ${fmtP(bearFVG.bottom)}-${fmtP(bearFVG.top)}`,
         });
         priceLinesRef.current.push(bearFvgLine);
       }
@@ -503,7 +517,7 @@ export default function Chart({
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `⚖️ 50% EQUILIBRIUM $${pd.equilibrium.toFixed(2)}`,
+          title: `⚖️ 50% EQUILIBRIUM ${fmtP(pd.equilibrium)}`,
         });
         priceLinesRef.current.push(eqLine);
       }
@@ -516,7 +530,7 @@ export default function Chart({
           lineWidth: 1,
           lineStyle: LineStyle.Dotted,
           axisLabelVisible: true,
-          title: `⚡ OTE FIB 62-79% $${pd.oteLong.bottom.toFixed(2)}-$${pd.oteLong.top.toFixed(2)}`,
+          title: `⚡ OTE FIB 62-79% ${fmtP(pd.oteLong.bottom)}-${fmtP(pd.oteLong.top)}`,
         });
         priceLinesRef.current.push(oteLine);
       }
@@ -718,20 +732,20 @@ export default function Chart({
                 {symbol} <span className="text-zinc-500 text-[11px] font-normal">({activeTf})</span>
               </span>
               <span className="text-zinc-400">
-                O: <span className="text-zinc-200">{legendData.open.toFixed(2)}</span>
+                O: <span className="text-zinc-200">{formatSymbolPrice(legendData.open, symbol)}</span>
               </span>
               <span className="text-zinc-400">
-                H: <span className="text-zinc-200">{legendData.high.toFixed(2)}</span>
+                H: <span className="text-zinc-200">{formatSymbolPrice(legendData.high, symbol)}</span>
               </span>
               <span className="text-zinc-400">
-                L: <span className="text-zinc-200">{legendData.low.toFixed(2)}</span>
+                L: <span className="text-zinc-200">{formatSymbolPrice(legendData.low, symbol)}</span>
               </span>
               <span className="text-zinc-400">
-                C: <span className="text-zinc-200">{legendData.close.toFixed(2)}</span>
+                C: <span className="text-zinc-200">{formatSymbolPrice(legendData.close, symbol)}</span>
               </span>
               <span className={changeColor}>
                 {isUp ? "+" : ""}
-                {legendData.change.toFixed(2)} ({isUp ? "+" : ""}
+                {formatSymbolPrice(legendData.change, symbol)} ({isUp ? "+" : ""}
                 {legendData.changePct.toFixed(2)}%)
               </span>
               {legendData.volume > 0 && (
@@ -790,7 +804,7 @@ export default function Chart({
                         Demand OB:
                       </span>
                       <span className="font-mono text-zinc-200">
-                        ${smc.orderBlocks.bullishOB.bottom.toFixed(2)} - ${smc.orderBlocks.bullishOB.top.toFixed(2)}
+                        {formatPriceWithUnit(smc.orderBlocks.bullishOB.bottom, symbol)} - {formatPriceWithUnit(smc.orderBlocks.bullishOB.top, symbol)}
                       </span>
                     </div>
                   )}
@@ -802,7 +816,7 @@ export default function Chart({
                         Supply OB:
                       </span>
                       <span className="font-mono text-zinc-200">
-                        ${smc.orderBlocks.bearishOB.bottom.toFixed(2)} - ${smc.orderBlocks.bearishOB.top.toFixed(2)}
+                        {formatPriceWithUnit(smc.orderBlocks.bearishOB.bottom, symbol)} - {formatPriceWithUnit(smc.orderBlocks.bearishOB.top, symbol)}
                       </span>
                     </div>
                   )}
@@ -811,7 +825,7 @@ export default function Chart({
                     <div className="flex items-center justify-between gap-3 pt-0.5 border-t border-zinc-800/60">
                       <span className="text-amber-400 font-medium">🎯 Liquidity:</span>
                       <span className="font-mono text-zinc-300">
-                        BSL ${smc.liquidity?.bsl?.level?.toFixed(2) ?? "--"} • SSL ${smc.liquidity?.ssl?.level?.toFixed(2) ?? "--"}
+                        BSL {smc.liquidity?.bsl?.level ? formatPriceWithUnit(smc.liquidity.bsl.level, symbol) : "--"} • SSL {smc.liquidity?.ssl?.level ? formatPriceWithUnit(smc.liquidity.ssl.level, symbol) : "--"}
                       </span>
                     </div>
                   )}

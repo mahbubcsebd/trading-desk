@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { getSymbolConfig } from "@/lib/formatters";
 
 interface TradingViewChartProps {
   symbol: string;
@@ -20,10 +21,10 @@ const TF_MAP: Record<string, string> = {
 export default function TradingViewChart({ symbol, activeTf }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Map to TradingView symbols — OANDA:XAUUSD is the standard spot gold feed
-  // that matches Exness XAU/USD price tick-for-tick (both reference LBMA/OTC spot).
-  const tvSymbol = symbol === "XAUUSD" ? "OANDA:XAUUSD" : "OANDA:BTCUSD";
-  const interval = TF_MAP[activeTf] || "5";
+  // Map to real-time TradingView feed (OANDA for spot Gold, FX for Majors, TVC for Indices, Binance for BTC)
+  const symConfig = getSymbolConfig(symbol);
+  const tvSymbol = symConfig.tvSymbol;
+  const interval = TF_MAP[activeTf] || "15";
 
   useEffect(() => {
     const container = containerRef.current;

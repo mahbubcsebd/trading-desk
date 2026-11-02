@@ -209,3 +209,4 @@ export function sendDesktopNotification(title: string, body: string, tag?: strin
     // Notifications not allowed in insecure contexts
   }
 }
+

@@ -16,18 +16,18 @@ elif engine_env.exists():
 # Data source: Yahoo Finance (ticker "GC=F" for Gold Futures, close matches
 #              Exness & TradingView spot XAU/USD within a few cents)
 # ---------------------------------------------------------------------------
-SYMBOLS = ["XAUUSD", "BTCUSD"]
+SYMBOLS = ["XAUUSD", "BTCUSD", "EURUSD", "GBPUSD", "USDJPY", "US30", "NAS100"]
 ENTRY_TF = "15m"
 BIAS_TFS = ["1h", "4h"]
 CHART_TFS = ["1m", "5m", "15m", "30m", "1h", "4h", "1D"]
 HISTORY_BARS = {
-    "1m":  500,
+    "1m":  300,
     "5m":  500,
-    "15m": 1000,
-    "30m": 1000,
-    "1h":  1000,
-    "4h":  1000,
-    "1D":  500,
+    "15m": 800,
+    "30m": 500,
+    "1h":  800,
+    "4h":  600,
+    "1D":  300,
 }
 BACKFILL_BARS = {"15m": 30000}
 
@@ -67,6 +67,11 @@ APP_TZ     = os.getenv("APP_TZ", "UTC")
 SYMBOL_TO_YF = {
     "XAUUSD": "GC=F",
     "BTCUSD": "BTC-USD",
+    "EURUSD": "EURUSD=X",
+    "GBPUSD": "GBPUSD=X",
+    "USDJPY": "USDJPY=X",
+    "US30":   "YM=F",
+    "NAS100": "NQ=F",
 }
 
 # Yahoo Finance interval / period mapping that matches our timeframes
@@ -91,18 +96,62 @@ YF_PERIOD_MAP = {
     "1D":  "2y",
 }
 
-# Exness XAU/USD instrument rules (MT5 contract spec)
-#   1 lot  = 100 troy oz
-#   Min lot: 0.01  |  Lot step: 0.01  |  Tick size: 0.01 USD
+# Exness instrument rules (MT5 contract specifications)
+#   XAUUSD: 1 lot = 100 troy oz ($1 move = $100/lot)
+#   BTCUSD: 1 lot = 1 coin ($1 move = $1/lot)
+#   EURUSD: 1 lot = 100,000 EUR (1 pip 0.0001 = $10/lot)
+#   GBPUSD: 1 lot = 100,000 GBP (1 pip 0.0001 = $10/lot)
+#   USDJPY: 1 lot = 100,000 USD (1 pip 0.01 = ~1000 JPY / price in USD)
+#   US30:   1 lot = 1 index point ($1 per point)
+#   NAS100: 1 lot = 1 index point ($1 per point)
 EXNESS_INSTRUMENT_RULES = {
     "XAUUSD": {
         "tick_size":     0.01,
         "qty_step":      0.01,
         "min_order_qty": 0.01,
+        "contract_size": 100.0,
+        "decimals":      2,
     },
     "BTCUSD": {
         "tick_size":     0.01,
         "qty_step":      0.001,
         "min_order_qty": 0.001,
+        "contract_size": 1.0,
+        "decimals":      2,
+    },
+    "EURUSD": {
+        "tick_size":     0.00001,
+        "qty_step":      0.01,
+        "min_order_qty": 0.01,
+        "contract_size": 100000.0,
+        "decimals":      5,
+    },
+    "GBPUSD": {
+        "tick_size":     0.00001,
+        "qty_step":      0.01,
+        "min_order_qty": 0.01,
+        "contract_size": 100000.0,
+        "decimals":      5,
+    },
+    "USDJPY": {
+        "tick_size":     0.001,
+        "qty_step":      0.01,
+        "min_order_qty": 0.01,
+        "contract_size": 100000.0,
+        "decimals":      3,
+    },
+    "US30": {
+        "tick_size":     0.1,
+        "qty_step":      0.01,
+        "min_order_qty": 0.01,
+        "contract_size": 1.0,
+        "decimals":      2,
+    },
+    "NAS100": {
+        "tick_size":     0.1,
+        "qty_step":      0.01,
+        "min_order_qty": 0.01,
+        "contract_size": 1.0,
+        "decimals":      2,
     },
 }

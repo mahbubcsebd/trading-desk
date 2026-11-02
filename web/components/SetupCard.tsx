@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SnapshotData } from "@/lib/engine";
 import FastOrderModal from "./FastOrderModal";
+import { formatPriceWithUnit } from "@/lib/formatters";
 
 interface SetupCardProps {
   setup: SnapshotData["setup"];
@@ -95,7 +96,7 @@ export default function SetupCard({
             </div>
             <div className="text-right">
               <span className="text-xs text-zinc-300 font-mono font-semibold block">
-                ${price > 0 ? price.toFixed(2) : "0.00"}
+                {price > 0 ? formatPriceWithUnit(price, symbol) : "--"}
               </span>
               <span className="text-[10px] text-zinc-500 font-mono block">
                 Exness Spot Feed
@@ -184,13 +185,13 @@ export default function SetupCard({
                     <span className="text-[10px] text-zinc-500">Above High</span>
                   </div>
                   <div className="font-mono text-zinc-100 font-bold text-sm">
-                    ${setup.breakoutLevels.buyTrigger.toFixed(2)}
+                    {formatPriceWithUnit(setup.breakoutLevels.buyTrigger, symbol)}
                   </div>
                   <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
-                    SL: ${(setup.breakoutLevels.buyTrigger - 2 * setup.breakoutLevels.atr).toFixed(2)}
+                    SL: {formatPriceWithUnit(setup.breakoutLevels.buyTrigger - 2 * setup.breakoutLevels.atr, symbol)}
                   </div>
                   <div className="text-[10px] text-emerald-400 font-mono">
-                    TP: ${(setup.breakoutLevels.buyTrigger + 4 * setup.breakoutLevels.atr).toFixed(2)}
+                    TP: {formatPriceWithUnit(setup.breakoutLevels.buyTrigger + 4 * setup.breakoutLevels.atr, symbol)}
                   </div>
                 </div>
 
@@ -201,13 +202,13 @@ export default function SetupCard({
                     <span className="text-[10px] text-zinc-500">Below Low</span>
                   </div>
                   <div className="font-mono text-zinc-100 font-bold text-sm">
-                    ${setup.breakoutLevels.sellTrigger.toFixed(2)}
+                    {formatPriceWithUnit(setup.breakoutLevels.sellTrigger, symbol)}
                   </div>
                   <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
-                    SL: ${(setup.breakoutLevels.sellTrigger + 2 * setup.breakoutLevels.atr).toFixed(2)}
+                    SL: {formatPriceWithUnit(setup.breakoutLevels.sellTrigger + 2 * setup.breakoutLevels.atr, symbol)}
                   </div>
                   <div className="text-[10px] text-red-400 font-mono">
-                    TP: ${(setup.breakoutLevels.sellTrigger - 4 * setup.breakoutLevels.atr).toFixed(2)}
+                    TP: {formatPriceWithUnit(setup.breakoutLevels.sellTrigger - 4 * setup.breakoutLevels.atr, symbol)}
                   </div>
                 </div>
               </div>
@@ -293,19 +294,19 @@ export default function SetupCard({
           <div>
             <span className="text-[10px] uppercase text-zinc-500 font-medium block">Entry</span>
             <span className="font-mono font-semibold text-zinc-100 tabular-nums">
-              {setup.entry.toLocaleString()}
+              {formatPriceWithUnit(setup.entry, symbol)}
             </span>
           </div>
           <div>
             <span className="text-[10px] uppercase text-zinc-500 font-medium block">Stop</span>
             <span className="font-mono font-semibold text-red-400 tabular-nums">
-              {setup.sl.toLocaleString()}
+              {formatPriceWithUnit(setup.sl, symbol)}
             </span>
           </div>
           <div>
             <span className="text-[10px] uppercase text-zinc-500 font-medium block">Target</span>
             <span className="font-mono font-semibold text-green-400 tabular-nums">
-              {setup.tp.toLocaleString()}
+              {formatPriceWithUnit(setup.tp, symbol)}
             </span>
           </div>
           <div>

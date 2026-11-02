@@ -44,7 +44,18 @@ def _find_swings(highs: np.ndarray, lows: np.ndarray, window: int = 2) -> Dict[s
     return {"highs": swing_highs, "lows": swing_lows}
 
 
-def analyze_market_structure(df: pd.DataFrame, current_price: float) -> Dict[str, Any]:
+def get_price_decimals(symbol: str, price: float = 0.0) -> int:
+    sym = symbol.upper()
+    if "EUR" in sym or "GBP" in sym or "AUD" in sym or "NZD" in sym:
+        return 5
+    if "JPY" in sym:
+        return 3
+    if price > 0 and price < 20.0:
+        return 5
+    return 2
+
+
+def analyze_market_structure(df: pd.DataFrame, current_price: float, decimals: int = 2) -> Dict[str, Any]:
     """
     Computes Market Structure, BOS (Break of Structure), and CHoCH (Change of Character).
     """
@@ -53,8 +64,8 @@ def analyze_market_structure(df: pd.DataFrame, current_price: float) -> Dict[str
             "trend": "NEUTRAL",
             "bos": {"type": "none", "level": 0.0, "broken": False, "status": "No BOS detected"},
             "choch": {"type": "none", "level": 0.0, "active": False, "status": "No CHoCH detected"},
-            "swingHigh": round(current_price * 1.01, 2),
-            "swingLow": round(current_price * 0.99, 2),
+            "swingHigh": round(current_price * 1.01, decimals),
+            "swingLow": round(current_price * 0.99, decimals),
             "structureDetail": "Building candle history...",
         }
 
@@ -88,22 +99,22 @@ def analyze_market_structure(df: pd.DataFrame, current_price: float) -> Dict[str
 
     if last_close > recent_sh:
         bos_type = "bullish"
-        bos_level = round(recent_sh, 2)
+        bos_level = round(recent_sh, decimals)
         bos_broken = True
-        bos_status = f"Bullish BOS confirmed above ${recent_sh:.2f}"
+        bos_status = f"Bullish BOS confirmed above {recent_sh:.{decimals}f}"
     elif last_close < recent_sl:
         bos_type = "bearish"
-        bos_level = round(recent_sl, 2)
+        bos_level = round(recent_sl, decimals)
         bos_broken = True
-        bos_status = f"Bearish BOS confirmed below ${recent_sl:.2f}"
+        bos_status = f"Bearish BOS confirmed below {recent_sl:.{decimals}f}"
     else:
         # Near break
         if recent_sh > 0 and (recent_sh - last_close) / recent_sh < 0.003:
-            bos_status = f"Testing Bullish Breakout Level at ${recent_sh:.2f}"
+            bos_status = f"Testing Bullish Breakout Level at {recent_sh:.{decimals}f}"
         elif recent_sl > 0 and (last_close - recent_sl) / recent_sl < 0.003:
-            bos_status = f"Testing Bearish Breakdown Level at ${recent_sl:.2f}"
+            bos_status = f"Testing Bearish Breakdown Level at {recent_sl:.{decimals}f}"
         else:
-            bos_status = f"Ranging between ${recent_sl:.2f} - ${recent_sh:.2f}"
+            bos_status = f"Ranging between {recent_sl:.{decimals}f} - {recent_sh:.{decimals}f}"
 
     # Check CHoCH (Change of Character)
     choch_type = "none"
@@ -113,22 +124,22 @@ def analyze_market_structure(df: pd.DataFrame, current_price: float) -> Dict[str
 
     if trend == "BEARISH" and last_close > prev_sh:
         choch_type = "bullish"
-        choch_level = round(prev_sh, 2)
+        choch_level = round(prev_sh, decimals)
         choch_active = True
-        choch_status = f"BULLISH CHoCH! Trend shifted bullish above ${prev_sh:.2f}"
+        choch_status = f"BULLISH CHoCH! Trend shifted bullish above {prev_sh:.{decimals}f}"
     elif trend == "BULLISH" and last_close < prev_sl:
         choch_type = "bearish"
-        choch_level = round(prev_sl, 2)
+        choch_level = round(prev_sl, decimals)
         choch_active = True
-        choch_status = f"BEARISH CHoCH! Trend shifted bearish below ${prev_sl:.2f}"
+        choch_status = f"BEARISH CHoCH! Trend shifted bearish below {prev_sl:.{decimals}f}"
     elif trend == "BEARISH":
         choch_type = "bullish"
-        choch_level = round(recent_sh, 2)
-        choch_status = f"Awaiting Bullish CHoCH flip above ${recent_sh:.2f}"
+        choch_level = round(recent_sh, decimals)
+        choch_status = f"Awaiting Bullish CHoCH flip above {recent_sh:.{decimals}f}"
     elif trend == "BULLISH":
         choch_type = "bearish"
-        choch_level = round(recent_sl, 2)
-        choch_status = f"Awaiting Bearish CHoCH flip below ${recent_sl:.2f}"
+        choch_level = round(recent_sl, decimals)
+        choch_status = f"Awaiting Bearish CHoCH flip below {recent_sl:.{decimals}f}"
 
     return {
         "trend": trend,
@@ -144,15 +155,15 @@ def analyze_market_structure(df: pd.DataFrame, current_price: float) -> Dict[str
             "active": choch_active,
             "status": choch_status,
         },
-        "swingHigh": round(recent_sh, 2),
-        "swingLow": round(recent_sl, 2),
-        "prevSwingHigh": round(prev_sh, 2),
-        "prevSwingLow": round(prev_sl, 2),
-        "structureDetail": f"{trend} market structure on 15m. Major Swing High at ${recent_sh:.2f}, Low at ${recent_sl:.2f}.",
+        "swingHigh": round(recent_sh, decimals),
+        "swingLow": round(recent_sl, decimals),
+        "prevSwingHigh": round(prev_sh, decimals),
+        "prevSwingLow": round(prev_sl, decimals),
+        "structureDetail": f"{trend} market structure on 15m. Major Swing High at {recent_sh:.{decimals}f}, Low at {recent_sl:.{decimals}f}.",
     }
 
 
-def analyze_order_blocks_and_fvg(df: pd.DataFrame, current_price: float) -> Dict[str, Any]:
+def analyze_order_blocks_and_fvg(df: pd.DataFrame, current_price: float, decimals: int = 2) -> Dict[str, Any]:
     """
     Computes Bullish & Bearish Order Blocks and Fair Value Gaps (FVG).
     """
@@ -189,10 +200,10 @@ def analyze_order_blocks_and_fvg(df: pd.DataFrame, current_price: float) -> Dict
                     break
             fvgs.append({
                 "type": "bullish",
-                "top": round(gap_top, 2),
-                "bottom": round(gap_bottom, 2),
-                "mid": round(gap_mid, 2),
-                "size": round(gap_top - gap_bottom, 2),
+                "top": round(gap_top, decimals),
+                "bottom": round(gap_bottom, decimals),
+                "mid": round(gap_mid, decimals),
+                "size": round(gap_top - gap_bottom, decimals),
                 "mitigated": mitigated,
                 "label": "Bullish FVG (BISI)",
             })
@@ -209,10 +220,10 @@ def analyze_order_blocks_and_fvg(df: pd.DataFrame, current_price: float) -> Dict
                     break
             fvgs.append({
                 "type": "bearish",
-                "top": round(gap_top, 2),
-                "bottom": round(gap_bottom, 2),
-                "mid": round(gap_mid, 2),
-                "size": round(gap_top - gap_bottom, 2),
+                "top": round(gap_top, decimals),
+                "bottom": round(gap_bottom, decimals),
+                "mid": round(gap_mid, decimals),
+                "size": round(gap_top - gap_bottom, decimals),
                 "mitigated": mitigated,
                 "label": "Bearish FVG (SIBI)",
             })
@@ -239,10 +250,10 @@ def analyze_order_blocks_and_fvg(df: pd.DataFrame, current_price: float) -> Dict
                 broken = any(closes[k] < ob_bottom for k in range(i + 1, n))
                 if not broken:
                     bull_ob = {
-                        "top": round(ob_top, 2),
-                        "bottom": round(ob_bottom, 2),
+                        "top": round(ob_top, decimals),
+                        "bottom": round(ob_bottom, decimals),
                         "status": "Active Demand",
-                        "label": f"Bullish OB (${ob_bottom:.2f} - ${ob_top:.2f})",
+                        "label": f"Bullish OB ({ob_bottom:.{decimals}f} - {ob_top:.{decimals}f})",
                     }
                     break
 
@@ -256,29 +267,29 @@ def analyze_order_blocks_and_fvg(df: pd.DataFrame, current_price: float) -> Dict
                 broken = any(closes[k] > ob_top for k in range(i + 1, n))
                 if not broken:
                     bear_ob = {
-                        "top": round(ob_top, 2),
-                        "bottom": round(ob_bottom, 2),
+                        "top": round(ob_top, decimals),
+                        "bottom": round(ob_bottom, decimals),
                         "status": "Active Supply",
-                        "label": f"Bearish OB (${ob_bottom:.2f} - ${ob_top:.2f})",
+                        "label": f"Bearish OB ({ob_bottom:.{decimals}f} - {ob_top:.{decimals}f})",
                     }
                     break
 
     if not bull_ob:
         min_l = float(lows[-15:].min())
         bull_ob = {
-            "top": round(min_l * 1.002, 2),
-            "bottom": round(min_l, 2),
+            "top": round(min_l * 1.002, decimals),
+            "bottom": round(min_l, decimals),
             "status": "Support Zone",
-            "label": f"Bullish Demand Area (${min_l:.2f})",
+            "label": f"Bullish Demand Area ({min_l:.{decimals}f})",
         }
 
     if not bear_ob:
         max_h = float(highs[-15:].max())
         bear_ob = {
-            "top": round(max_h, 2),
-            "bottom": round(max_h * 0.998, 2),
+            "top": round(max_h, decimals),
+            "bottom": round(max_h * 0.998, decimals),
             "status": "Supply Zone",
-            "label": f"Bearish Supply Area (${max_h:.2f})",
+            "label": f"Bearish Supply Area ({max_h:.{decimals}f})",
         }
 
     return {
@@ -291,14 +302,14 @@ def analyze_order_blocks_and_fvg(df: pd.DataFrame, current_price: float) -> Dict
     }
 
 
-def analyze_liquidity_and_sweeps(df: pd.DataFrame, current_price: float) -> Dict[str, Any]:
+def analyze_liquidity_and_sweeps(df: pd.DataFrame, current_price: float, decimals: int = 2) -> Dict[str, Any]:
     """
     Computes Buy-Side Liquidity (BSL), Sell-Side Liquidity (SSL), and Turtle Soup / Judas Sweeps.
     """
     if df is None or len(df) < 20:
         return {
-            "bsl": {"level": round(current_price * 1.01, 2), "label": "BSL Pool"},
-            "ssl": {"level": round(current_price * 0.99, 2), "label": "SSL Pool"},
+            "bsl": {"level": round(current_price * 1.01, decimals), "label": "BSL Pool"},
+            "ssl": {"level": round(current_price * 0.99, decimals), "label": "SSL Pool"},
             "sweep": {"detected": False, "type": "none", "desc": "No sweep detected"},
         }
 
@@ -321,27 +332,27 @@ def analyze_liquidity_and_sweeps(df: pd.DataFrame, current_price: float) -> Dict
         if lows[i] < ssl_level and closes[i] > ssl_level:
             sweep_detected = True
             sweep_type = "bullish_ssl_sweep"
-            sweep_desc = f"SSL Sweep (Turtle Soup Long)! Swept ${lows[i]:.2f} and reclaimed ${closes[i]:.2f}."
+            sweep_desc = f"SSL Sweep (Turtle Soup Long)! Swept {lows[i]:.{decimals}f} and reclaimed {closes[i]:.{decimals}f}."
             break
         elif highs[i] > bsl_level and closes[i] < bsl_level:
             sweep_detected = True
             sweep_type = "bearish_bsl_sweep"
-            sweep_desc = f"BSL Sweep (Turtle Soup Short)! Swept ${highs[i]:.2f} and rejected below ${closes[i]:.2f}."
+            sweep_desc = f"BSL Sweep (Turtle Soup Short)! Swept {highs[i]:.{decimals}f} and rejected below {closes[i]:.{decimals}f}."
             break
 
-    dist_to_bsl = round(bsl_level - current_price, 2)
-    dist_to_ssl = round(current_price - ssl_level, 2)
+    dist_to_bsl = round(bsl_level - current_price, decimals)
+    dist_to_ssl = round(current_price - ssl_level, decimals)
 
     return {
         "bsl": {
-            "level": round(bsl_level, 2),
+            "level": round(bsl_level, decimals),
             "distance": dist_to_bsl,
-            "label": f"Buy-Side Liquidity (BSL) at ${bsl_level:.2f}",
+            "label": f"Buy-Side Liquidity (BSL) at {bsl_level:.{decimals}f}",
         },
         "ssl": {
-            "level": round(ssl_level, 2),
+            "level": round(ssl_level, decimals),
             "distance": dist_to_ssl,
-            "label": f"Sell-Side Liquidity (SSL) at ${ssl_level:.2f}",
+            "label": f"Sell-Side Liquidity (SSL) at {ssl_level:.{decimals}f}",
         },
         "sweep": {
             "detected": sweep_detected,
@@ -352,7 +363,7 @@ def analyze_liquidity_and_sweeps(df: pd.DataFrame, current_price: float) -> Dict
     }
 
 
-def analyze_premium_discount(df: pd.DataFrame, current_price: float) -> Dict[str, Any]:
+def analyze_premium_discount(df: pd.DataFrame, current_price: float, decimals: int = 2) -> Dict[str, Any]:
     """
     Computes ICT Premium vs Discount Arrays, Equilibrium (50%), and Optimal Trade Entry (OTE).
     """
@@ -380,16 +391,16 @@ def analyze_premium_discount(df: pd.DataFrame, current_price: float) -> Dict[str
         bias = "Fair Value / Indecision"
         action_hint = "Wait for expansion into Discount or Premium"
 
-    ote_buy_top = round(high - 0.618 * range_span, 2)
-    ote_buy_bottom = round(high - 0.786 * range_span, 2)
+    ote_buy_top = round(high - 0.618 * range_span, decimals)
+    ote_buy_bottom = round(high - 0.786 * range_span, decimals)
 
-    ote_sell_bottom = round(low + 0.618 * range_span, 2)
-    ote_sell_top = round(low + 0.786 * range_span, 2)
+    ote_sell_bottom = round(low + 0.618 * range_span, decimals)
+    ote_sell_top = round(low + 0.786 * range_span, decimals)
 
     return {
-        "rangeHigh": round(high, 2),
-        "rangeLow": round(low, 2),
-        "equilibrium": round(equilibrium, 2),
+        "rangeHigh": round(high, decimals),
+        "rangeLow": round(low, decimals),
+        "equilibrium": round(equilibrium, decimals),
         "currentPercent": round(pct, 1),
         "zone": zone,
         "bias": bias,
@@ -464,28 +475,44 @@ def analyze_risk_management(
     risk_pct: float = 1.0,
     pd_zone: str = "DISCOUNT",
     structure_trend: str = "BULLISH",
+    decimals: int = 2,
 ) -> Dict[str, Any]:
     """
     Computes Institutional Risk Management & Exness Position Sizing.
     """
+    sym = symbol.upper()
     risk_usd = round(balance * (risk_pct / 100.0), 2)
-    sl_points = max(1.5 * atr, 2.0 if "XAU" in symbol else 250.0)
 
-    if "XAU" in symbol:
+    if "XAU" in sym:
+        min_sl = 2.0
         dollars_per_point_per_lot = 100.0
+    elif "BTC" in sym:
+        min_sl = 250.0
+        dollars_per_point_per_lot = 1.0
+    elif "EUR" in sym or "GBP" in sym:
+        min_sl = 0.0015  # 15 pips
+        dollars_per_point_per_lot = 100000.0  # 100k units base currency
+    elif "JPY" in sym:
+        min_sl = 0.25    # 25 pips
+        dollars_per_point_per_lot = 100000.0 / current_price if current_price > 0 else 635.0
+    elif "US30" in sym or "NAS100" in sym:
+        min_sl = 35.0
+        dollars_per_point_per_lot = 1.0
     else:
+        min_sl = 10.0
         dollars_per_point_per_lot = 1.0
 
-    lots_raw = risk_usd / (sl_points * dollars_per_point_per_lot)
+    sl_points = max(1.5 * atr, min_sl)
+    lots_raw = risk_usd / (sl_points * dollars_per_point_per_lot) if (sl_points * dollars_per_point_per_lot) > 0 else 0.01
     lot_size = max(0.01, round(lots_raw, 2))
 
-    long_sl = round(current_price - sl_points, 2)
-    long_tp1 = round(current_price + (2.0 * sl_points), 2)
-    long_tp2 = round(current_price + (3.5 * sl_points), 2)
+    long_sl = round(current_price - sl_points, decimals)
+    long_tp1 = round(current_price + (2.0 * sl_points), decimals)
+    long_tp2 = round(current_price + (3.5 * sl_points), decimals)
 
-    short_sl = round(current_price + sl_points, 2)
-    short_tp1 = round(current_price - (2.0 * sl_points), 2)
-    short_tp2 = round(current_price - (3.5 * sl_points), 2)
+    short_sl = round(current_price + sl_points, decimals)
+    short_tp1 = round(current_price - (2.0 * sl_points), decimals)
+    short_tp2 = round(current_price - (3.5 * sl_points), decimals)
 
     checklist = [
         {"name": "Market Structure Direction", "passed": structure_trend != "NEUTRAL", "weight": 20},
@@ -501,10 +528,10 @@ def analyze_risk_management(
         "balance": balance,
         "riskPct": risk_pct,
         "riskUsd": risk_usd,
-        "slPoints": round(sl_points, 2),
+        "slPoints": round(sl_points, decimals),
         "lotSize": lot_size,
         "longSetup": {
-            "entry": round(current_price, 2),
+            "entry": round(current_price, decimals),
             "sl": long_sl,
             "tp1": long_tp1,
             "tp2": long_tp2,
@@ -512,7 +539,7 @@ def analyze_risk_management(
             "rr2": 3.5,
         },
         "shortSetup": {
-            "entry": round(current_price, 2),
+            "entry": round(current_price, decimals),
             "sl": short_sl,
             "tp1": short_tp1,
             "tp2": short_tp2,
@@ -535,13 +562,26 @@ def compute_full_smc_analysis(
     """
     Main entry point: executes complete ICT / SMC / Risk Management pipeline.
     """
+    decimals = get_price_decimals(symbol, current_price)
     if atr <= 0.0:
-        atr = 2.5 if "XAU" in symbol else 300.0
+        sym = symbol.upper()
+        if "XAU" in sym:
+            atr = 2.5
+        elif "BTC" in sym:
+            atr = 300.0
+        elif "EUR" in sym or "GBP" in sym:
+            atr = 0.0012
+        elif "JPY" in sym:
+            atr = 0.20
+        elif "US30" in sym or "NAS100" in sym:
+            atr = 40.0
+        else:
+            atr = 1.0
 
-    structure = analyze_market_structure(df_15m, current_price)
-    ob_fvg = analyze_order_blocks_and_fvg(df_15m, current_price)
-    liquidity = analyze_liquidity_and_sweeps(df_15m, current_price)
-    pd_array = analyze_premium_discount(df_15m, current_price)
+    structure = analyze_market_structure(df_15m, current_price, decimals=decimals)
+    ob_fvg = analyze_order_blocks_and_fvg(df_15m, current_price, decimals=decimals)
+    liquidity = analyze_liquidity_and_sweeps(df_15m, current_price, decimals=decimals)
+    pd_array = analyze_premium_discount(df_15m, current_price, decimals=decimals)
     killzone = analyze_ict_killzones()
     risk = analyze_risk_management(
         symbol=symbol,
@@ -551,6 +591,7 @@ def compute_full_smc_analysis(
         risk_pct=risk_pct,
         pd_zone=pd_array["zone"],
         structure_trend=structure["trend"],
+        decimals=decimals,
     )
 
     return {

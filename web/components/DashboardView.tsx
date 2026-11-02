@@ -22,6 +22,7 @@ import {
   sendDesktopNotification,
 } from "@/lib/audio-alerts";
 import type { SnapshotData } from "@/lib/engine";
+import { SUPPORTED_SYMBOLS } from "@/lib/formatters";
 
 interface DashboardViewProps {
   initialSymbol: string;
@@ -227,31 +228,40 @@ export default function DashboardView({
 
       {/* Top Bar Controls: Asset Switch & Live Indicator */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-800/60">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSymbol("XAUUSD")}
-            className={`h-8 px-4 font-semibold text-xs rounded transition-colors ${
-              symbol === "XAUUSD"
-                ? "bg-zinc-100 text-zinc-900 shadow"
-                : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-            }`}
-          >
-            Gold (XAU/USD) — Exness
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSymbol("BTCUSD")}
-            className={`h-8 px-4 font-semibold text-xs rounded transition-colors ${
-              symbol === "BTCUSD"
-                ? "bg-zinc-100 text-zinc-900 shadow"
-                : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-            }`}
-          >
-            Bitcoin (BTC/USD)
-          </Button>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {SUPPORTED_SYMBOLS.map((s) => (
+            <Button
+              key={s.id}
+              variant="ghost"
+              size="sm"
+              onClick={() => setSymbol(s.id)}
+              className={`h-8 px-3 font-semibold text-xs rounded-md transition-all ${
+                symbol === s.id
+                  ? "bg-zinc-100 text-zinc-900 shadow-sm font-bold"
+                  : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80"
+              }`}
+            >
+              <span>{s.name}</span>
+              {s.category === "Forex" && (
+                <span
+                  className={`ml-1.5 text-[9px] px-1 py-0.2 rounded font-mono font-normal ${
+                    symbol === s.id ? "bg-zinc-300 text-zinc-900" : "bg-zinc-800 text-cyan-400"
+                  }`}
+                >
+                  FX
+                </span>
+              )}
+              {s.category === "Indices" && (
+                <span
+                  className={`ml-1.5 text-[9px] px-1 py-0.2 rounded font-mono font-normal ${
+                    symbol === s.id ? "bg-zinc-300 text-zinc-900" : "bg-zinc-800 text-amber-400"
+                  }`}
+                >
+                  IDX
+                </span>
+              )}
+            </Button>
+          ))}
 
           {/* Quick Jump Shortcuts & Sound Customizer */}
           <div className="hidden sm:flex items-center space-x-1.5 pl-2 border-l border-zinc-800/80">

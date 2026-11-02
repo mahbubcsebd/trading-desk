@@ -175,6 +175,11 @@ export default function JournalClient({ initialTrades, initialStats }: JournalCl
                   className="flex h-8 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 font-medium focus:outline-none"
                 >
                   <option value="XAUUSD">XAUUSD (Gold — Exness)</option>
+                  <option value="EURUSD">EURUSD (EUR/USD — Exness)</option>
+                  <option value="GBPUSD">GBPUSD (GBP/USD — Exness)</option>
+                  <option value="USDJPY">USDJPY (USD/JPY — Exness)</option>
+                  <option value="US30">US30 (Wall St 30 — Exness)</option>
+                  <option value="NAS100">NAS100 (US Tech 100 — Exness)</option>
                   <option value="BTCUSD">BTCUSD (Bitcoin — Exness)</option>
                 </select>
               </div>
