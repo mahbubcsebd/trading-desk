@@ -175,6 +175,9 @@ class SymbolState:
                             tp=setup["tp"],
                             score=setup["score"],
                             strategy=setup["strategy"],
+                            candles=self.candles.get("15m", []) or self.candles.get("1h", []),
+                            smc=self.smc,
+                            lot_size=self.smc.get("risk", {}).get("lotSize", 0.01) if self.smc else None,
                         )
                     )
                 except Exception as e:

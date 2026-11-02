@@ -14,6 +14,7 @@ dependencies = [
     # Exness data source: Yahoo Finance (GC=F tracks spot XAU/USD)
     "yfinance>=0.2.55",
     "python-dotenv>=1.0.0",
+    "matplotlib>=3.11.2",
 ]
 
 [tool.uv]
