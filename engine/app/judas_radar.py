@@ -280,3 +280,4 @@ def analyze_all_judas_radars(state_obj) -> List[Dict[str, Any]]:
         radar = analyze_judas_radar(sym, candles, sym_state.price)
         results.append(radar)
     return results
+

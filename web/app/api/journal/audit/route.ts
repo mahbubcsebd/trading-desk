@@ -93,7 +93,7 @@ You MUST return ONLY valid JSON matching this schema, with NO markdown backticks
 `;
 
   // 5. Call Gemini API
-  const candidateModels = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest"];
+  const candidateModels = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-flash-latest"];
   let rawResponse = "";
 
   for (const model of candidateModels) {
@@ -102,6 +102,7 @@ You MUST return ONLY valid JSON matching this schema, with NO markdown backticks
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(9000),
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {

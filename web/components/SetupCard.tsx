@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SnapshotData } from "@/lib/engine";
 import FastOrderModal from "./FastOrderModal";
+import AiPreTradeValidatorModal from "./AiPreTradeValidatorModal";
 import { formatPriceWithUnit } from "@/lib/formatters";
 
 interface SetupCardProps {
@@ -272,6 +273,15 @@ export default function SetupCard({
             {setup.action}
           </span>
           <div className="flex items-center gap-1.5">
+            <AiPreTradeValidatorModal
+              symbol={symbol}
+              side={setup.action as "BUY" | "SELL"}
+              entry={setup.entry}
+              sl={setup.sl}
+              tp={setup.tp}
+              qty={setup.qty || 0.01}
+              riskPct={1.0}
+            />
             <FastOrderModal
               symbol={symbol}
               price={price}
