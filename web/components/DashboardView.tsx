@@ -10,8 +10,17 @@ import StrategiesPanel from "./StrategiesPanel";
 import SmcAnalysisDeck from "./smc/SmcAnalysisDeck";
 import MacroNewsPanel from "./MacroNewsPanel";
 import SessionHudBar from "./SessionHudBar";
+import FastOrderModal from "./FastOrderModal";
+import SoundAlertsDialog from "./SoundAlertsDialog";
 import AiCopilot from "./AiCopilot";
 import { Button } from "@/components/ui/button";
+import { X, Bell, Zap, Flame, ShieldAlert, ArrowRight } from "lucide-react";
+import {
+  playSetupAlert,
+  playLiquiditySweepAlert,
+  playNewsWarningAlert,
+  sendDesktopNotification,
+} from "@/lib/audio-alerts";
 import type { SnapshotData } from "@/lib/engine";
 
 interface DashboardViewProps {
@@ -70,34 +79,149 @@ export default function DashboardView({
   const currentSnapshot = snapshot || initialSnapshot;
   const isFresh = connected && currentSnapshot.fresh;
 
-  // Instant browser audio sound alert on new BUY / SELL setups
+  // Multi-Event Sound Alerts & Desktop Notifications
+  const [floatingAlert, setFloatingAlert] = useState<{
+    type: "setup" | "sweep" | "news";
+    title: string;
+    desc: string;
+    side?: "BUY" | "SELL";
+    timestamp: number;
+  } | null>(null);
+
   const prevActionRef = React.useRef<string>("WAIT");
+  const prevSweepRef = React.useRef<boolean>(false);
+  const prevNewsWindowRef = React.useRef<boolean>(false);
+
   useEffect(() => {
+    // 1. Setup Signal Alert (BUY / SELL)
     const curAction = currentSnapshot.setup?.action || "WAIT";
     if (prevActionRef.current === "WAIT" && (curAction === "BUY" || curAction === "SELL")) {
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          const ctx = new AudioCtx();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-          osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12); // A5
-          gain.gain.setValueAtTime(0.25, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.55);
-        }
-      } catch {}
+      playSetupAlert(curAction as "BUY" | "SELL");
+      sendDesktopNotification(
+        `🟢 ${symbol} ${curAction} Signal Triggered!`,
+        `Entry: $${currentSnapshot.setup?.entry || 0} | SL: $${currentSnapshot.setup?.sl || 0} | TP: $${currentSnapshot.setup?.tp || 0}`
+      );
+      setFloatingAlert({
+        type: "setup",
+        title: `${symbol} ${curAction} Signal Triggered!`,
+        desc: `Entry: $${currentSnapshot.setup?.entry} | SL: $${currentSnapshot.setup?.sl} | TP: $${currentSnapshot.setup?.tp} (Score: ${currentSnapshot.setup?.score}/100)`,
+        side: curAction as "BUY" | "SELL",
+        timestamp: Date.now(),
+      });
     }
     prevActionRef.current = curAction;
-  }, [currentSnapshot.setup?.action]);
+
+    // 2. SMC Liquidity Sweep (Judas Swing) Alert
+    const sweepDetected = currentSnapshot.smc?.liquidity?.sweep?.detected || false;
+    if (!prevSweepRef.current && sweepDetected) {
+      playLiquiditySweepAlert();
+      const sweepDesc = currentSnapshot.smc?.liquidity?.sweep?.desc || "Institutional Liquidity Pool Swept";
+      sendDesktopNotification(`🎯 ${symbol} Liquidity Sweep!`, sweepDesc);
+      setFloatingAlert({
+        type: "sweep",
+        title: `🎯 ${symbol} Liquidity Sweep Detected!`,
+        desc: sweepDesc,
+        timestamp: Date.now(),
+      });
+    }
+    prevSweepRef.current = sweepDetected;
+
+    // 3. Forex Factory High-Impact News Window Alert
+    const isNewsWin = currentSnapshot.macro?.news?.isNewsWindow || false;
+    if (!prevNewsWindowRef.current && isNewsWin) {
+      playNewsWarningAlert();
+      sendDesktopNotification(
+        `⚠️ Forex Factory News Warning!`,
+        currentSnapshot.macro?.news?.warning || "High spread widening volatility window active."
+      );
+      setFloatingAlert({
+        type: "news",
+        title: "⚠️ High Volatility News Window Active!",
+        desc: currentSnapshot.macro?.news?.warning || "Spreads widening risk during red-folder economic events.",
+        timestamp: Date.now(),
+      });
+    }
+    prevNewsWindowRef.current = isNewsWin;
+  }, [
+    currentSnapshot.setup?.action,
+    currentSnapshot.smc?.liquidity?.sweep?.detected,
+    currentSnapshot.macro?.news?.isNewsWindow,
+    symbol,
+  ]);
+
+  // Auto-dismiss floating alert after 9 seconds
+  useEffect(() => {
+    if (!floatingAlert) return;
+    const timer = setTimeout(() => {
+      setFloatingAlert(null);
+    }, 9000);
+    return () => clearTimeout(timer);
+  }, [floatingAlert]);
 
   return (
     <div className="space-y-6">
+      {/* Floating Institutional Real-Time Signal Banner */}
+      {floatingAlert && (
+        <div className="fixed top-16 right-4 sm:right-6 z-50 max-w-sm w-full p-3.5 rounded-xl bg-zinc-950/95 border border-zinc-700/80 shadow-[0_0_30px_rgba(0,0,0,0.85)] backdrop-blur-2xl animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <div
+                className={`p-2 rounded-lg shrink-0 mt-0.5 ${
+                  floatingAlert.type === "setup"
+                    ? floatingAlert.side === "BUY"
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                      : "bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
+                    : floatingAlert.type === "sweep"
+                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                    : "bg-red-500/20 text-red-400 border border-red-500/30"
+                }`}
+              >
+                {floatingAlert.type === "setup" ? (
+                  <Zap className="w-4 h-4 fill-current" />
+                ) : floatingAlert.type === "sweep" ? (
+                  <Flame className="w-4 h-4" />
+                ) : (
+                  <ShieldAlert className="w-4 h-4" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
+                  {floatingAlert.title}
+                </h4>
+                <p className="text-[11px] text-zinc-300 leading-relaxed font-mono">
+                  {floatingAlert.desc}
+                </p>
+                {floatingAlert.type === "setup" && (
+                  <div className="pt-1.5">
+                    <FastOrderModal
+                      symbol={symbol}
+                      price={currentSnapshot.price}
+                      setup={currentSnapshot.setup}
+                      smc={currentSnapshot.smc}
+                      triggerButton={
+                        <Button
+                          size="sm"
+                          className="h-6 px-2 text-[10px] font-semibold bg-cyan-600 hover:bg-cyan-500 text-white gap-1 cursor-pointer"
+                        >
+                          <span>Open MT5 Ticket</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setFloatingAlert(null)}
+              className="text-zinc-500 hover:text-zinc-300 p-0.5 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 0. Live Institutional Session Architecture, Killzone & Macro News HUD Bar */}
       <SessionHudBar macro={currentSnapshot.macro} smc={currentSnapshot.smc} />
 
@@ -129,7 +253,7 @@ export default function DashboardView({
             Bitcoin (BTC/USD)
           </Button>
 
-          {/* Quick Jump Shortcuts */}
+          {/* Quick Jump Shortcuts & Sound Customizer */}
           <div className="hidden sm:flex items-center space-x-1.5 pl-2 border-l border-zinc-800/80">
             <a
               href="#macro-radar"
@@ -143,6 +267,7 @@ export default function DashboardView({
             >
               <span>🏛️ SMC Deck (6 Cards)</span>
             </a>
+            <SoundAlertsDialog />
           </div>
         </div>
 

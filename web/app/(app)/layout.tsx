@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getHealth, getSettings } from "@/lib/engine";
 import { connection } from "next/server";
 import SettingsDialog from "@/components/SettingsDialog";
+import SoundAlertsDialog from "@/components/SoundAlertsDialog";
 
 export const metadata = {
   title: "TradeDesk — Gold & BTC Trading Dashboard",
@@ -78,6 +79,8 @@ export default function AppLayout({
             <Suspense fallback={null}>
               <EngineStatusBadge />
             </Suspense>
+
+            <SoundAlertsDialog />
 
             <Suspense fallback={null}>
               <SettingsWrapper />
