@@ -178,6 +178,13 @@ async def get_all_judas_radars_endpoint() -> List[Dict[str, Any]]:
     return analyze_all_judas_radars(state)
 
 
+@app.get("/api/risk-shield", dependencies=[Depends(verify_engine_key)])
+async def get_portfolio_risk_shield_endpoint() -> Dict[str, Any]:
+    """Returns Currency Correlation Matrix, Net Currency Exposure, and Daily Drawdown Circuit Breaker status."""
+    from app.correlation import compute_portfolio_risk_shield
+    return compute_portfolio_risk_shield(state)
+
+
 @app.get("/api/backtest", dependencies=[Depends(verify_engine_key)])
 async def get_backtest_endpoint(
     symbol: str = Query(..., description="Symbol, e.g. BTCUSD, XAUUSD"),

@@ -11,6 +11,7 @@ import SmcAnalysisDeck from "./smc/SmcAnalysisDeck";
 import MacroNewsPanel from "./MacroNewsPanel";
 import SessionHudBar from "./SessionHudBar";
 import ConfluenceMatrix from "./ConfluenceMatrix";
+import PortfolioRiskShield from "./PortfolioRiskShield";
 import JudasRadarDeck from "./JudasRadarDeck";
 import FastOrderModal from "./FastOrderModal";
 import SoundAlertsDialog from "./SoundAlertsDialog";
@@ -231,6 +232,11 @@ export default function DashboardView({
       {/* 0.5 Institutional Multi-Timeframe Confluence Matrix */}
       <ConfluenceMatrix
         activeSymbol={symbol}
+        onSelectSymbol={(newSym) => setSymbol(newSym)}
+      />
+
+      {/* 0.6 Currency Correlation & Portfolio Risk Shield */}
+      <PortfolioRiskShield
         onSelectSymbol={(newSym) => setSymbol(newSym)}
       />
 

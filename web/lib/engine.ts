@@ -584,6 +584,73 @@ export async function getAllJudasRadars(): Promise<JudasRadarResult[]> {
   return res.json();
 }
 
+export interface CorrelationPairRelation {
+  pair: string;
+  s1: string;
+  s2: string;
+  correlation: number;
+  type: string;
+  advice: string;
+  badgeColor: string;
+}
+
+export interface CorrelationMatrixData {
+  symbols: string[];
+  matrix: Record<string, Record<string, number>>;
+  keyRelationships: CorrelationPairRelation[];
+  status: string;
+}
+
+export interface CircuitBreakerData {
+  status: "PROTECTED" | "WARNING" | "TRIPPED";
+  badge: string;
+  badgeColor: "emerald" | "amber" | "rose";
+  isTripped: boolean;
+  isNearingBreaker: boolean;
+  drawdownUsedPct: number;
+  maxDailyLossUsd: number;
+  currentLossUsd: number;
+  remainingDrawdownUsd: number;
+  message: string;
+}
+
+export interface PortfolioHeatData {
+  status: "OPTIMAL" | "ELEVATED" | "HIGH_RISK";
+  heatColor: "emerald" | "amber" | "rose";
+  totalCommittedRiskPct: number;
+  totalCommittedRiskUsd: number;
+  maxAllowedRiskPct: number;
+  activeSetupsCount: number;
+  activeSetups: Array<{ symbol: string; side: string; score: number; riskUsd: number }>;
+}
+
+export interface PortfolioRiskShieldData {
+  account: {
+    balance: number;
+    dailyLimitPct: number;
+    maxPortfolioRiskPct: number;
+    todayPnlUsd: number;
+    tradesCount: number;
+  };
+  circuitBreaker: CircuitBreakerData;
+  portfolioHeat: PortfolioHeatData;
+  netCurrencyExposure: Record<string, number>;
+  warnings: Array<{ type: string; message: string; severity: "HIGH" | "MEDIUM" | "LOW" }>;
+  correlation: CorrelationMatrixData;
+}
+
+export async function getPortfolioRiskShield(): Promise<PortfolioRiskShieldData> {
+  const res = await fetch(`${ENGINE_URL}/api/risk-shield`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Risk Shield: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+
 
 
 
