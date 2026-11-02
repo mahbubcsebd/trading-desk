@@ -11,6 +11,7 @@ import SmcAnalysisDeck from "./smc/SmcAnalysisDeck";
 import MacroNewsPanel from "./MacroNewsPanel";
 import SessionHudBar from "./SessionHudBar";
 import ConfluenceMatrix from "./ConfluenceMatrix";
+import JudasRadarDeck from "./JudasRadarDeck";
 import FastOrderModal from "./FastOrderModal";
 import SoundAlertsDialog from "./SoundAlertsDialog";
 import AiCopilot from "./AiCopilot";
@@ -354,6 +355,15 @@ export default function DashboardView({
         <MacroNewsPanel
           macro={currentSnapshot.macro}
           symbol={symbol}
+        />
+      </div>
+
+      {/* 3.5 ICT Asian Range & Judas Swing Radar */}
+      <div id="judas-radar" className="scroll-mt-16">
+        <JudasRadarDeck
+          symbol={symbol}
+          onSelectSymbol={(newSym) => setSymbol(newSym)}
+          smc={currentSnapshot.smc}
         />
       </div>
 

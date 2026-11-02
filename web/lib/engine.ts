@@ -518,5 +518,72 @@ export async function getConfluenceMatrix(): Promise<ConfluenceMatrixData> {
   return res.json();
 }
 
+export interface JudasRangeData {
+  high: number;
+  low: number;
+  midpoint: number;
+  rangePips: number;
+  status: string;
+  positionPct?: number;
+}
+
+export interface JudasSweepAnalysis {
+  asianHighSwept: boolean;
+  asianLowSwept: boolean;
+  sweepHighPips: number;
+  sweepLowPips: number;
+  maxSweepHigh: number;
+  minSweepLow: number;
+  judasState: string;
+  badgeLabel: string;
+  badgeColor: "emerald" | "rose" | "amber" | "cyan" | "zinc";
+}
+
+export interface JudasTradeSetup {
+  action: "BUY" | "SELL";
+  trigger: string;
+  entry: number;
+  sl: number;
+  tp: number;
+  rr: number;
+  confidenceScore: number;
+  rationale: string;
+}
+
+export interface JudasRadarResult {
+  symbol: string;
+  price: number;
+  pipSize: number;
+  decimals: number;
+  asianRange: JudasRangeData;
+  londonRange: JudasRangeData;
+  sweepAnalysis: JudasSweepAnalysis;
+  tradeSetup: JudasTradeSetup | null;
+  updatedAtUtc: string;
+}
+
+export async function getJudasRadar(symbol: string): Promise<JudasRadarResult> {
+  const res = await fetch(`${ENGINE_URL}/api/judas-radar?symbol=${encodeURIComponent(symbol)}`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Judas Radar: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function getAllJudasRadars(): Promise<JudasRadarResult[]> {
+  const res = await fetch(`${ENGINE_URL}/api/judas-radar/all`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch all Judas Radars: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+
 
 

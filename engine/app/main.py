@@ -152,6 +152,32 @@ async def get_confluence_matrix_endpoint() -> Dict[str, Any]:
     return compute_confluence_matrix(state)
 
 
+@app.get("/api/judas-radar", dependencies=[Depends(verify_engine_key)])
+async def get_judas_radar_endpoint(
+    symbol: str = Query("XAUUSD", description="Symbol, e.g. XAUUSD, EURUSD"),
+) -> Dict[str, Any]:
+    """Returns ICT Asian Range & Judas Swing Radar analysis for a specific symbol."""
+    from app.judas_radar import analyze_judas_radar
+    sym = symbol.upper()
+    if sym not in config.SYMBOLS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid symbol '{symbol}'. Supported symbols: {config.SYMBOLS}",
+        )
+    sym_state = state.get_symbol(sym)
+    if not sym_state:
+        raise HTTPException(status_code=404, detail="Symbol state not found")
+    candles = sym_state.candles.get("15m", []) or sym_state.candles.get("5m", [])
+    return analyze_judas_radar(sym, candles, sym_state.price)
+
+
+@app.get("/api/judas-radar/all", dependencies=[Depends(verify_engine_key)])
+async def get_all_judas_radars_endpoint() -> List[Dict[str, Any]]:
+    """Returns ICT Asian Range & Judas Swing Radar scan for all 7 instruments."""
+    from app.judas_radar import analyze_all_judas_radars
+    return analyze_all_judas_radars(state)
+
+
 @app.get("/api/backtest", dependencies=[Depends(verify_engine_key)])
 async def get_backtest_endpoint(
     symbol: str = Query(..., description="Symbol, e.g. BTCUSD, XAUUSD"),
