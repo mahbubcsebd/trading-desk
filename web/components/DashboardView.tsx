@@ -12,6 +12,7 @@ import MacroNewsPanel from "./MacroNewsPanel";
 import SessionHudBar from "./SessionHudBar";
 import ConfluenceMatrix from "./ConfluenceMatrix";
 import PortfolioRiskShield from "./PortfolioRiskShield";
+import NewsSpikeGuardDeck from "./NewsSpikeGuardDeck";
 import JudasRadarDeck from "./JudasRadarDeck";
 import FastOrderModal from "./FastOrderModal";
 import SoundAlertsDialog from "./SoundAlertsDialog";
@@ -237,6 +238,12 @@ export default function DashboardView({
 
       {/* 0.6 Currency Correlation & Portfolio Risk Shield */}
       <PortfolioRiskShield
+        onSelectSymbol={(newSym) => setSymbol(newSym)}
+      />
+
+      {/* 0.7 Red Folder News Spike Guard & Dynamic Spread Monitor */}
+      <NewsSpikeGuardDeck
+        symbol={symbol}
         onSelectSymbol={(newSym) => setSymbol(newSym)}
       />
 

@@ -185,6 +185,16 @@ async def get_portfolio_risk_shield_endpoint() -> Dict[str, Any]:
     return compute_portfolio_risk_shield(state)
 
 
+@app.get("/api/spike-guard", dependencies=[Depends(verify_engine_key)])
+async def get_spike_guard_endpoint(
+    symbol: str = Query("XAUUSD", description="Symbol, e.g. XAUUSD, EURUSD, BTCUSD"),
+) -> Dict[str, Any]:
+    """Returns Red Folder News Spike Guard & Dynamic Spread Monitor for the symbol."""
+    from app.spike_guard import compute_spike_guard
+    return compute_spike_guard(symbol, state)
+
+
+
 @app.get("/api/backtest", dependencies=[Depends(verify_engine_key)])
 async def get_backtest_endpoint(
     symbol: str = Query(..., description="Symbol, e.g. BTCUSD, XAUUSD"),

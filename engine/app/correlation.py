@@ -268,3 +268,4 @@ def compute_portfolio_risk_shield(state_obj) -> Dict[str, Any]:
         "warnings": warnings,
         "correlation": corr_data,
     }
+

@@ -16,3 +16,4 @@ export async function GET(req: NextRequest) {
     return new NextResponse(err.message || "Failed to fetch Risk Shield", { status: 500 });
   }
 }
+

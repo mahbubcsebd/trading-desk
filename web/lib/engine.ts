@@ -650,6 +650,72 @@ export async function getPortfolioRiskShield(): Promise<PortfolioRiskShieldData>
   return res.json();
 }
 
+export interface DynamicSpreadData {
+  symbol: string;
+  bid: number | null;
+  ask: number | null;
+  liveSpread: number;
+  typicalSpread: number;
+  unit: string;
+  multiplier: number;
+  status: "OPTIMAL" | "ELEVATED" | "BLOWN";
+  statusColor: "emerald" | "amber" | "rose";
+  costPerLotUsd: number;
+  timestamp: number;
+}
+
+export interface UpcomingNewsEvent {
+  title: string;
+  currency: string;
+  country?: string;
+  impact: "High" | "Medium" | "Low";
+  timeUtc: string;
+  minutesUntil: number;
+  secondsUntil?: number;
+  countdownText?: string;
+  isPast?: boolean;
+  forecast: string;
+  previous: string;
+}
+
+export interface NewsSpikeGuardData {
+  symbol: string;
+  currencies: string[];
+  guardStatus: "CLEAR" | "PRE_NEWS_WARNING" | "BLACKOUT_LOCKED" | "COOLING_OFF" | "SPREAD_ALERT";
+  badge: string;
+  badgeColor: "emerald" | "amber" | "rose" | "blue";
+  isTradeLocked: boolean;
+  warning: string | null;
+  guidanceBn: string;
+  spread: DynamicSpreadData;
+  nextHighImpactEvent: UpcomingNewsEvent | null;
+  upcomingEvents: UpcomingNewsEvent[];
+  allSymbolsSpread: Record<
+    string,
+    {
+      liveSpread: number;
+      typicalSpread: number;
+      multiplier: number;
+      status: string;
+      unit: string;
+      costPerLotUsd?: number;
+    }
+  >;
+  timestamp: string;
+}
+
+export async function getNewsSpikeGuard(symbol: string = "XAUUSD"): Promise<NewsSpikeGuardData> {
+  const res = await fetch(`${ENGINE_URL}/api/spike-guard?symbol=${encodeURIComponent(symbol)}`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch News Spike Guard: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+
 
 
 
