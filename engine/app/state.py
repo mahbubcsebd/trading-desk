@@ -36,6 +36,7 @@ class SymbolState:
     daily_limit_hit: bool = False
     current_atr: float = 0.0
     index_price: float = 0.0
+    smc: Optional[Dict[str, Any]] = None
 
     @property
     def basis(self) -> float:
@@ -151,6 +152,18 @@ class SymbolState:
 
             self.current_setup = setup
             self.strategies_summary = strategies_summary
+
+            try:
+                from app.smc import compute_full_smc_analysis
+                decimals = config.EXNESS_INSTRUMENT_RULES.get(self.symbol, {}).get("decimals", 2)
+                self.smc = compute_full_smc_analysis(
+                    df_15m,
+                    self.price,
+                    decimals=decimals,
+                    daily_bias=self.bias.get("h4", "neutral")
+                )
+            except Exception as smc_err:
+                logger.debug("Failed computing SMC analysis for %s: %s", self.symbol, smc_err)
 
             if setup.get("action") in ("BUY", "SELL"):
                 log_signal(

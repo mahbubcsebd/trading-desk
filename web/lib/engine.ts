@@ -448,4 +448,75 @@ export async function getJournalStats(): Promise<JournalStats> {
   return res.json();
 }
 
+export interface TimeframeAnalysis {
+  tf: string;
+  trend: "BULLISH" | "BEARISH" | "NEUTRAL";
+  rsi: number;
+  emaStatus: string;
+  label: string;
+}
+
+export interface MatrixPairResult {
+  symbol: string;
+  name: string;
+  assetClass: string;
+  price: number;
+  decimals: number;
+  alignment: {
+    grade: "A+" | "A" | "B" | "CHOP";
+    direction: "BULLISH" | "BEARISH" | "NEUTRAL";
+    score: number;
+    badge: string;
+    summary: string;
+    bullCount: number;
+    bearCount: number;
+    neutralCount: number;
+  };
+  timeframes: {
+    "4h": TimeframeAnalysis;
+    "1h": TimeframeAnalysis;
+    "15m": TimeframeAnalysis;
+    "5m": TimeframeAnalysis;
+  };
+  smc: {
+    pdZone: "DISCOUNT" | "PREMIUM" | "EQUILIBRIUM";
+    structureTrend: string;
+    hasDemandOB: boolean;
+    hasSupplyOB: boolean;
+  };
+  setup: {
+    action: "BUY" | "SELL" | "WAIT";
+    score: number;
+    strategy?: string;
+    entry: number;
+    sl: number;
+    tp: number;
+    rr: number;
+  };
+}
+
+export interface ConfluenceMatrixData {
+  pairs: MatrixPairResult[];
+  summary: {
+    totalPairs: number;
+    aPlusCount: number;
+    aCount: number;
+    chopCount: number;
+    activeSignals: number;
+    marketSentiment: string;
+  };
+}
+
+export async function getConfluenceMatrix(): Promise<ConfluenceMatrixData> {
+  const res = await fetch(`${ENGINE_URL}/api/confluence-matrix`, {
+    headers: { "X-Engine-Key": ENGINE_KEY },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch confluence matrix: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+
 

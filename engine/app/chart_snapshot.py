@@ -194,3 +194,4 @@ def generate_chart_snapshot(
     except Exception as exc:
         logger.error(f"Failed to generate chart snapshot for {symbol}: {exc}", exc_info=True)
         return None
+

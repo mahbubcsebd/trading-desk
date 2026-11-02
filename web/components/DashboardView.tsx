@@ -10,6 +10,7 @@ import StrategiesPanel from "./StrategiesPanel";
 import SmcAnalysisDeck from "./smc/SmcAnalysisDeck";
 import MacroNewsPanel from "./MacroNewsPanel";
 import SessionHudBar from "./SessionHudBar";
+import ConfluenceMatrix from "./ConfluenceMatrix";
 import FastOrderModal from "./FastOrderModal";
 import SoundAlertsDialog from "./SoundAlertsDialog";
 import AiCopilot from "./AiCopilot";
@@ -225,6 +226,12 @@ export default function DashboardView({
 
       {/* 0. Live Institutional Session Architecture, Killzone & Macro News HUD Bar */}
       <SessionHudBar macro={currentSnapshot.macro} smc={currentSnapshot.smc} />
+
+      {/* 0.5 Institutional Multi-Timeframe Confluence Matrix */}
+      <ConfluenceMatrix
+        activeSymbol={symbol}
+        onSelectSymbol={(newSym) => setSymbol(newSym)}
+      />
 
       {/* Top Bar Controls: Asset Switch & Live Indicator */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-800/60">

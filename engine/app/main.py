@@ -145,6 +145,13 @@ async def get_snapshot_endpoint(
     return state.get_snapshot(sym, tf=tf)
 
 
+@app.get("/api/confluence-matrix", dependencies=[Depends(verify_engine_key)])
+async def get_confluence_matrix_endpoint() -> Dict[str, Any]:
+    """Returns real-time multi-timeframe confluence matrix for all 7 supported instruments."""
+    from app.matrix import compute_confluence_matrix
+    return compute_confluence_matrix(state)
+
+
 @app.get("/api/backtest", dependencies=[Depends(verify_engine_key)])
 async def get_backtest_endpoint(
     symbol: str = Query(..., description="Symbol, e.g. BTCUSD, XAUUSD"),
