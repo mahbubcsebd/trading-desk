@@ -14,9 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, TrendingUp, TrendingDown, DollarSign, Activity, AlertTriangle } from "lucide-react";
+import { Trash2, TrendingUp, TrendingDown, DollarSign, Activity, AlertTriangle, Brain, Sparkles, Award } from "lucide-react";
 import { addJournalTradeAction, deleteJournalTradeAction } from "@/app/actions";
 import type { JournalTrade, JournalStats } from "@/lib/engine";
+import AiTradeAuditorModal from "./AiTradeAuditorModal";
+import { formatSymbolPrice } from "@/lib/formatters";
 
 interface JournalClientProps {
   initialTrades: JournalTrade[];
@@ -151,6 +153,47 @@ export default function JournalClient({ initialTrades, initialStats }: JournalCl
           </div>
           <p className="text-[11px] text-zinc-500 mt-1">Net of fees & slippage</p>
         </Card>
+      </div>
+
+      {/* AI Performance Coach Insights Bar */}
+      <div className="p-4 rounded-xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/20 via-zinc-900/40 to-blue-950/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-lg">
+        <div className="flex items-start space-x-3">
+          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 mt-0.5">
+            <Brain className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-zinc-100">
+                Institutional AI Performance Coach
+              </span>
+              <Badge variant="outline" className="text-[10px] font-mono border-cyan-500/40 text-cyan-400 bg-cyan-500/10">
+                Gemini 3.5 Flash
+              </Badge>
+            </div>
+            <p className="text-xs text-zinc-300">
+              {initialStats.trades === 0
+                ? "কোনো ট্রেড এখনো রেকর্ড করা হয়নি। আপনার ক্লোজ করা ট্রেড লগ করলেই AI স্বয়ংক্রিয়ভাবে এক্সিকিউশন গ্রেড (A+/A/B/C/F) ও রিস্ক অডিট রিপোর্ট প্রদান করবে।"
+                : initialStats.totalR >= 0
+                ? `অভিনন্দন! আপনার সার্বিক এক্সপেক্ট্যান্সি +${initialStats.expectancy.toFixed(2)}R/trade এবং মোট একুমুলেটেড গেইন +${initialStats.totalR.toFixed(2)}R। নিচের প্রতিটি ট্রেডের জন্য আলাদা 'Audit Trade' বাটনে ক্লিক করে পার্সোনালাইজড অডিট দেখে নিন।`
+                : `সতর্কতা: বর্তমান মোট ড্রডাউন ${initialStats.totalR.toFixed(2)}R। ক্যাপিটাল প্রোটেকশনের জন্য শুধুমাত্র হাই-কনফ্লুয়েন্স SMC Order Block ও Killzone সেটআপে ট্রেড করুন।`}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0 self-end md:self-auto text-xs font-mono">
+          <div className="px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-center">
+            <span className="text-[10px] text-zinc-500 block">Avg Expectancy</span>
+            <span className={`font-bold ${initialStats.expectancy >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              {initialStats.expectancy >= 0 ? `+${initialStats.expectancy.toFixed(2)}R` : `${initialStats.expectancy.toFixed(2)}R`}
+            </span>
+          </div>
+          <div className="px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-center">
+            <span className="text-[10px] text-zinc-500 block">Win/Loss Ratio</span>
+            <span className="font-bold text-zinc-200">
+              {initialStats.winRate.toFixed(0)}% Win
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Log Trade Form */}
@@ -304,13 +347,14 @@ export default function JournalClient({ initialTrades, initialStats }: JournalCl
                 <TableHead className="text-zinc-400 font-semibold text-xs text-right">Net PnL ($)</TableHead>
                 <TableHead className="text-zinc-400 font-semibold text-xs text-right">R-Multiple</TableHead>
                 <TableHead className="text-zinc-400 font-semibold text-xs">Notes</TableHead>
+                <TableHead className="text-zinc-400 font-semibold text-xs text-center">AI Audit</TableHead>
                 <TableHead className="text-zinc-400 font-semibold text-xs text-center">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {initialTrades.length === 0 ? (
                 <TableRow className="border-zinc-800/80">
-                  <TableCell colSpan={11} className="text-center py-8 text-xs text-zinc-500">
+                  <TableCell colSpan={12} className="text-center py-8 text-xs text-zinc-500">
                     No closed trades recorded yet. Log your completed trades above.
                   </TableCell>
                 </TableRow>
@@ -329,13 +373,13 @@ export default function JournalClient({ initialTrades, initialStats }: JournalCl
                       </span>
                     </TableCell>
                     <TableCell className="text-xs font-mono text-zinc-200 text-right tabular-nums">
-                      {t.entry.toLocaleString()}
+                      {formatSymbolPrice(t.entry, t.symbol)}
                     </TableCell>
                     <TableCell className="text-xs font-mono text-zinc-200 text-right tabular-nums">
-                      {t.exit.toLocaleString()}
+                      {formatSymbolPrice(t.exit, t.symbol)}
                     </TableCell>
                     <TableCell className="text-xs font-mono text-red-400 text-right tabular-nums">
-                      {t.sl.toLocaleString()}
+                      {formatSymbolPrice(t.sl, t.symbol)}
                     </TableCell>
                     <TableCell className="text-xs font-mono text-zinc-200 text-right tabular-nums">
                       {t.qty}
@@ -352,6 +396,9 @@ export default function JournalClient({ initialTrades, initialStats }: JournalCl
                     </TableCell>
                     <TableCell className="text-xs text-zinc-400 max-w-[150px] truncate">
                       {t.notes || "--"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <AiTradeAuditorModal trade={t} />
                     </TableCell>
                     <TableCell className="text-center">
                       <Button

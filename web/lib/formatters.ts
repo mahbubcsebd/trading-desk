@@ -97,3 +97,4 @@ export function formatPriceWithUnit(price: number | undefined | null, symbol: st
   }
   return `$${formatted}`; // Gold, BTC, Indices
 }
+
