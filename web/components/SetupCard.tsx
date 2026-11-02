@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SnapshotData } from "@/lib/engine";
+import FastOrderModal from "./FastOrderModal";
 
 interface SetupCardProps {
   setup: SnapshotData["setup"];
@@ -12,6 +13,7 @@ interface SetupCardProps {
   price: number;
   dailyLimitHit?: boolean;
   liquidity?: SnapshotData["liquidity"];
+  smc?: SnapshotData["smc"] | null;
 }
 
 export default function SetupCard({
@@ -20,6 +22,7 @@ export default function SetupCard({
   price,
   dailyLimitHit = false,
   liquidity,
+  smc,
 }: SetupCardProps) {
   const [copied, setCopied] = useState(false);
 
@@ -152,12 +155,25 @@ export default function SetupCard({
             <div className="rounded-lg border border-zinc-800/90 bg-zinc-950/80 p-3 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300 flex items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-1.5" />
-                  Pending Order Roadmap
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-1.5" />
+                  Exness Order Roadmap
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
-                  Pre-Set in Exness
-                </span>
+                <FastOrderModal
+                  symbol={symbol}
+                  price={price}
+                  setup={setup}
+                  smc={smc}
+                  triggerButton={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-[10px] font-semibold text-cyan-300 border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 gap-1 cursor-pointer"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                      <span>One-Click MT5 Ticket</span>
+                    </Button>
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -248,20 +264,28 @@ export default function SetupCard({
           </div>
         )}
 
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span
             className={`inline-flex items-center px-3 py-1 rounded text-2xl font-black border tracking-wider ${actionColor}`}
           >
             {setup.action}
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCopyLevels}
-            className="h-7 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-          >
-            {copied ? "Copied!" : "Copy levels"}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <FastOrderModal
+              symbol={symbol}
+              price={price}
+              setup={setup}
+              smc={smc}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopyLevels}
+              className="h-8 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 cursor-pointer"
+            >
+              {copied ? "Copied!" : "Quick Copy"}
+            </Button>
+          </div>
         </div>
 
         {/* 6 Key Numbers with Tabular Nums */}

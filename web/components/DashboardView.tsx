@@ -190,6 +190,7 @@ export default function DashboardView({
             price={currentSnapshot.price}
             dailyLimitHit={currentSnapshot.dailyLimitHit}
             liquidity={currentSnapshot.liquidity}
+            smc={currentSnapshot.smc}
           />
         </div>
 

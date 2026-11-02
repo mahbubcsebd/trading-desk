@@ -369,3 +369,4 @@ export default function SessionHudBar({ macro, smc }: SessionHudBarProps) {
     </div>
   );
 }
+
